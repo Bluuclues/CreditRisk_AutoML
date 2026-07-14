@@ -3,5 +3,5 @@ duckdb
 pandas
 scikit-learn
 shap
-matplotlib==3.8.0
+matplotlib
 seaborn
