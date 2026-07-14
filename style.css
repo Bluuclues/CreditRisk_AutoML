@@ -1,0 +1,37 @@
+/* style.css */
+
+/* Change the background of the main content area */
+.stApp {
+    background-color: #f8f9fa;
+}
+
+/* Style the big title */
+h1 {
+    color: #1E3A8A !important;
+    font-family: 'Helvetica Neue', sans-serif;
+}
+
+/* Style the info box */
+div[data-testid="stInfo"] {
+    border-left-color: #1E3A8A;
+}
+
+/* style.css */
+
+/* Apply Helvetica globally */
+html, body, [class*="css"] {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #000000 !important; /* Forces normal text to be black */
+}
+
+/* Custom styling for the big left-side title */
+.massive-title {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 900;          /* Extra bold */
+    font-size: 80px;           /* Massive size */
+    line-height: 0.95;         /* Tight line spacing */
+    text-transform: uppercase; /* Force all caps */
+    color: #111111;            /* Almost black */
+    margin-top: 20px;
+    letter-spacing: -2px;      /* Tighter letter spacing for that bold look */
+}

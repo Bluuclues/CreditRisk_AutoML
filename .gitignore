@@ -1,0 +1,12 @@
+# Ignore Database Files
+*.db
+*.sqlite
+*.duckdb
+
+# Ignore Raw Data Files
+*.csv
+*.xlsx
+
+# Ignore Python Environment Files
+venv/
+__pycache__/
