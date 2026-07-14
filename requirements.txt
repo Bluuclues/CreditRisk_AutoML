@@ -3,7 +3,7 @@ duckdb
 pandas
 scikit-learn
 shap
-matplotlib.pyplot
+matplotlib
 seaborn
 sqlite3
 uuid
