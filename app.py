@@ -7,6 +7,9 @@ import os
 import matplotlib.pyplot as plt
 import shap
 
+# --- IMPORT STREAMLIT ELEMENTS ---
+from streamlit_elements import elements, dashboard, mui, nivo
+
 # Import your custom backend modules
 from modules.feature_store import apply_macro_layers
 from modules.models.dispatcher import run_models
@@ -121,10 +124,8 @@ if st.session_state.current_page == "pipeline":
             uploaded_file = st.file_uploader("Upload Panel Loan Data (CSV)", type=["csv"])
 
             if uploaded_file is not None:
-                # Read CSV and enforce empty strings for blank cells to maintain strict data structures
                 st.session_state.primary_df = pd.read_csv(uploaded_file)
                 
-                # Auto-extract year for DuckDB join
                 if 'loan_date' in st.session_state.primary_df.columns:
                     st.session_state.primary_df['loan_date'] = pd.to_datetime(st.session_state.primary_df['loan_date'], errors='coerce')
                     st.session_state.primary_df['year'] = st.session_state.primary_df['loan_date'].dt.year
@@ -197,7 +198,6 @@ if st.session_state.current_page == "pipeline":
             with col_train:
                 if st.button("Run AutoML Pipeline", type="primary"):
                     with st.spinner("Training models..."):
-                        # Dispatch to backend module
                         st.session_state.trained_results = run_models(st.session_state.final_layered_df, models)
                     
                     st.success("Training Complete!")
@@ -213,7 +213,7 @@ if st.session_state.current_page == "pipeline":
 
 
 # ==========================================
-# PAGE 2: THE ANALYTICS DASHBOARD
+# PAGE 2: THE ANALYTICS DASHBOARD (REFACETORED)
 # ==========================================
 elif st.session_state.current_page == "dashboard":
     
@@ -227,108 +227,133 @@ elif st.session_state.current_page == "dashboard":
             
     st.write("---")
     
-    # --- 1. PORTFOLIO HIGH-LEVEL METRICS ---
+    # --- DATA COMPUTATION ---
     df = st.session_state.final_layered_df
     total_loans = len(df)
-    total_defaults = df['default_flag'].sum() if 'default_flag' in df.columns else 0
+    total_defaults = int(df['default_flag'].sum()) if 'default_flag' in df.columns else 0
     default_rate = (total_defaults / total_loans) * 100 if total_loans > 0 else 0
     
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Total Loan Records", f"{total_loans:,}")
-    m2.metric("Total Defaults Recorded", f"{total_defaults:,}")
-    m3.metric("Historical Default Rate", f"{default_rate:.2f}%")
-    
-    st.write("---")
-    
-    # --- 2. DATA OVERVIEW (PIE CHART & STATISTICS) ---
-    st.subheader("📊 Portfolio Data Overview")
-    overview_col1, overview_col2 = st.columns([1, 2], gap="large")
+    # Prepare data structure for Nivo Pie Chart
+    if 'default_flag' in df.columns:
+        counts = df['default_flag'].value_counts()
+        pie_data = [
+            {"id": "Performing (0)", "label": "Performing", "value": int(counts.get(0, 0)), "color": "#2e7bcf"},
+            {"id": "Defaulted (1)", "label": "Defaulted", "value": int(counts.get(1, 0)), "color": "#ff4b4b"}
+        ]
+    else:
+        pie_data = []
 
-    with overview_col1:
-        st.write("**Default Distribution**")
-        if 'default_flag' in df.columns:
-            # Create a Matplotlib Pie Chart
-            fig_pie, ax_pie = plt.subplots(figsize=(4, 4))
-            
-            # Count defaults vs performing
-            counts = df['default_flag'].value_counts()
-            
-            # Map index to readable labels if it's 1 and 0
-            labels = []
-            for val in counts.index:
-                if val == 1: labels.append("Defaulted (1)")
-                elif val == 0: labels.append("Performing (0)")
-                else: labels.append(str(val))
+    # --- 1. SELECT TO BUILD INTERFACE ---
+    available_widgets = {
+        "metrics": "High-Level Portfolio Metrics",
+        "pie_chart": "Default Distribution Breakdown (Nivo Interactive)",
+        "summary_table": "Summary Statistics (Traditional Grid)"
+    }
+    
+    selected_widgets = st.multiselect(
+        "🛠️ Customize Workspace Layout (Add/Remove Dashboard Elements):",
+        options=list(available_widgets.keys()),
+        format_func=lambda x: available_widgets[x],
+        default=["metrics", "pie_chart"]
+    )
+    
+    # --- 2. DEFINE THE DRAGGABLE CANVAS GRID LAYOUT ---
+    # Layout parameters: Item(key, x, y, width, height)
+    grid_layout = [
+        dashboard.Item("metrics", 0, 0, 12, 2, isResizable=False),
+        dashboard.Item("pie_chart", 0, 2, 4, 4),
+        dashboard.Item("summary_table", 4, 2, 8, 4)
+    ]
+    
+    st.caption("💡 **Workspace Tip:** Drag components by their top boundaries to reorganize your view. Grab the bottom-right corners to resize components.")
+    
+    # --- 3. RENDER CANVAS COMPONENT ENVIRONMENT ---
+    if selected_widgets:
+        with elements("dashboard_workspace"):
+            with dashboard.Grid(grid_layout):
                 
-            ax_pie.pie(counts, labels=labels, autopct='%1.1f%%', startangle=140, 
-                       colors=['#2e7bcf', '#ff4b4b'], textprops={'color': "white"})
-            
-            # Transparent background for dark mode compatibility
-            fig_pie.patch.set_alpha(0.0)
-            ax_pie.patch.set_alpha(0.0)
-            
-            st.pyplot(fig_pie)
-        else:
-            st.warning("No default_flag column found to plot.")
+                # METRICS SECTION
+                if "metrics" in selected_widgets:
+                    with mui.Paper(key="metrics", elevation=2, sx={"padding": 2, "display": "flex", "justifyContent": "space-around", "alignItems": "center", "backgroundColor": "#1e293b", "color": "#ffffff"}):
+                        with mui.Box(sx={"textAlign": "center"}):
+                            mui.Typography("Total Loan Records", variant="overline", sx={"color": "#94a3b8"})
+                            mui.Typography(f"{total_loans:,}", variant="h4", sx={"fontWeight": "bold"})
+                        with mui.Box(sx={"textAlign": "center"}):
+                            mui.Typography("Total Defaults Recorded", variant="overline", sx={"color": "#94a3b8"})
+                            mui.Typography(f"{total_defaults:,}", variant="h4", sx={"fontWeight": "bold", "color": "#f87171"})
+                        with mui.Box(sx={"textAlign": "center"}):
+                            mui.Typography("Historical Default Rate", variant="overline", sx={"color": "#94a3b8"})
+                            mui.Typography(f"{default_rate:.2f}%", variant="h4", sx={"fontWeight": "bold", "color": "#f87171"})
 
-    with overview_col2:
-        st.write("**Summary Statistics (Numeric Features)**")
-        # Filter out ID columns and targets that don't need statistical summaries
-        cols_to_exclude = ['session_id', 'borrower_id', 'loan_no', 'default_flag', 'year']
-        numeric_df = df.select_dtypes(include=['number']).drop(columns=[c for c in cols_to_exclude if c in df.columns], errors='ignore')
-        
-        # Transpose (.T) the describe output so it fits cleanly on a wide screen
-        summary_stats = numeric_df.describe().T
-        st.dataframe(summary_stats, use_container_width=True)
+                # INTERACTIVE NIVO PIE CHART
+                if "pie_chart" in selected_widgets:
+                    with mui.Paper(key="pie_chart", elevation=3, sx={"padding": 3, "display": "flex", "flexDirection": "column", "height": "100%"}):
+                        mui.Typography("Default Distribution", variant="h6", sx={"fontWeight": "600", "marginBottom": 1})
+                        if pie_data:
+                            nivo.Pie(
+                                data=pie_data,
+                                margin={"top": 40, "right": 40, "bottom": 40, "left": 40},
+                                innerRadius=0.5,
+                                padAngle=0.7,
+                                cornerRadius=3,
+                                activeOuterRadiusOffset=8,
+                                borderWidth=1,
+                                borderColor={"from": "color", "modifiers": [["darker", 0.2]]},
+                                enableArcLinkLabels=True,
+                                arcLinkLabelsSkipAngle=10,
+                                arcLinkLabelsTextColor="#333333",
+                                arcLabelsRadiusOffset=0.5,
+                                arcLabelsSkipAngle=10,
+                                arcLabelsTextColor="#ffffff"
+                            )
+                        else:
+                            mui.Typography("No default_flag column found to plot.", variant="body2", color="error")
+
+                # REPOSITIONABLE SUMMARY TABLE CARD
+                if "summary_table" in selected_widgets:
+                    with mui.Paper(key="summary_table", elevation=3, sx={"padding": 3, "overflow": "auto"}):
+                        mui.Typography("Summary Statistics (Numeric Features)", variant="h6", sx={"fontWeight": "600", "marginBottom": 2})
+                        
+                        # We leverage a sub-container block to safely render native elements like DataFrames inside a static frame block
+                        cols_to_exclude = ['session_id', 'borrower_id', 'loan_no', 'default_flag', 'year']
+                        numeric_df = df.select_dtypes(include=['number']).drop(columns=[c for c in cols_to_exclude if c in df.columns], errors='ignore')
+                        summary_stats = numeric_df.describe().T
+                        
+                        # Use streamlit's container escape tool since nested layout engine handles it safely outside grid rendering loops
+                        st.dataframe(summary_stats, use_container_width=True)
 
     st.write("---")
     
-    # --- 3. MACHINE LEARNING INSIGHTS ---
+    # --- 4. MACHINE LEARNING INSIGHTS ---
+    # Kept outside the grid execution stream for specialized Matplotlib SHAP compilation structures
     if st.session_state.trained_results:
         for model_name, results in st.session_state.trained_results.items():
             st.subheader(f"🤖 Model: {model_name}")
-            
-            # Print metrics
             st.markdown(f"**Accuracy:** {results['metrics']['accuracy']:.2%} | **Precision:** {results['metrics']['precision']:.2%} | **Recall:** {results['metrics']['recall']:.2%}")
-            
-            # Generate SHAP Plot
             st.write("**Feature Importance (SHAP Values)**")
             
             try:
                 model = results['model'].named_steps['classifier']
                 preprocessor = results['model'].named_steps['preprocessor']
                 
-                # Transform the test data to get the exact features the model saw
                 X_test_transformed = preprocessor.transform(results['X_test'])
-                
-                # Decompress the sparse matrix for Pandas
                 if hasattr(X_test_transformed, 'toarray'):
                     X_test_transformed = X_test_transformed.toarray()
                 
                 feature_names = preprocessor.get_feature_names_out()
-                
-                # Create a Pandas DataFrame out of the transformed array for SHAP
                 X_test_df = pd.DataFrame(X_test_transformed, columns=feature_names)
                 
-                # Calculate SHAP values
                 explainer = shap.TreeExplainer(model)
                 shap_values = explainer.shap_values(X_test_df)
                 
-                # --- FIX 1: Extract the Correct Data (Default Class) ---
-                # Random Forest returns a list [Class 0, Class 1]. We only want Class 1.
                 if isinstance(shap_values, list):
                     shap_values = shap_values[1]
                 
-                # --- FIX 2: Shrink the Graph Size ---
                 fig_shap, ax_shap = plt.subplots(figsize=(7, 4))
-                
-                # --- FIX 3: Cap the displayed features to top 10 ---
                 shap.summary_plot(shap_values, X_test_df, max_display=10, show=False)
                 
-                # Transparent background
                 fig_shap.patch.set_alpha(0.0)
                 ax_shap.patch.set_alpha(0.0)
-                
                 st.pyplot(fig_shap)
                 
             except Exception as e:
