@@ -5,4 +5,5 @@ scikit-learn
 shap
 matplotlib
 seaborn
+plotly
 streamlit_elements
