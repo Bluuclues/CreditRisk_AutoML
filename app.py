@@ -9,6 +9,8 @@ import shap
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit.components.v1 as components
+import io
 
 # --- IMPORT STREAMLIT ELEMENTS ---
 from streamlit_elements import elements, dashboard, mui, nivo
@@ -220,13 +222,26 @@ if st.session_state.current_page == "pipeline":
 # ==========================================
 elif st.session_state.current_page == "dashboard":
     
-    col_title, col_back = st.columns([3, 1])
+    col_title, col_back = st.columns([2, 2])
     with col_title:
         st.title("📈 Portfolio & Model Insights")
     with col_back:
-        if st.button("← Back to Pipeline"):
-            st.session_state.current_page = "pipeline"
-            st.rerun()
+        col_b1, col_b2, col_b3 = st.columns([1,1,1])
+        with col_b1:
+            if st.button("← Pipeline"):
+                st.session_state.current_page = "pipeline"
+                st.rerun()
+        with col_b2:
+            if st.button("View Data"):
+                st.session_state.current_page = "data_viewer"
+                st.rerun()
+        with col_b3:
+            components.html(
+                """
+                <button onclick="window.parent.print()" style="padding:0.4rem 0.8rem; border:1px solid #ccc; border-radius:4px; background-color:#f8f9fa; cursor:pointer;">🖨️ Print</button>
+                """,
+                height=40
+            )
             
     st.write("---")
     
@@ -353,179 +368,97 @@ elif st.session_state.current_page == "dashboard":
         if selected_year != 'All':
             analytics_df = analytics_df[analytics_df['year'] == selected_year]
             
-    # Tabs for different statistics
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Time Series Analysis", 
-        "📦 Distribution & Composition", 
-        "📊 Categorical Breakdown", 
-        "🔥 Correlation & Relationships",
-        "🌍 Macroeconomic Impact"
-    ])
-    
-    with tab1:
-        st.markdown("### Loan Volume & Defaults Over Time")
-        if 'loan_date' in analytics_df.columns:
-            # Group by year-month
-            analytics_df['year_month'] = analytics_df['loan_date'].dt.to_period('M').astype(str)
-            time_df = analytics_df.groupby('year_month').agg(
-                total_loans=('amount_kes', 'count'),
-                total_amount=('amount_kes', 'sum'),
-                defaults=('default_flag', 'sum')
-            ).reset_index()
-            
-            time_df['default_rate'] = (time_df['defaults'] / time_df['total_loans']) * 100
-            
-            fig_time = px.line(time_df, x='year_month', y='total_amount', 
-                               title="Total Loan Amount Over Time", 
-                               markers=True,
-                               labels={"year_month": "Month", "total_amount": "Total Amount (KES)"})
-            st.plotly_chart(fig_time, use_container_width=True)
-            
-            fig_rate = px.bar(time_df, x='year_month', y='default_rate', 
-                              title="Default Rate Over Time (%)",
-                              labels={"year_month": "Month", "default_rate": "Default Rate (%)"},
-                              color='default_rate', color_continuous_scale='Reds')
-            st.plotly_chart(fig_rate, use_container_width=True)
-        else:
-            st.warning("No 'loan_date' column available for Time Series analysis.")
-            
-    with tab2:
-        st.markdown("### Loan Distribution by Default Status")
-        col2a, col2b = st.columns(2)
-        
-        with col2a:
-            st.write("**Loan Amount Distribution (Seaborn)**")
-            if 'amount_kes' in analytics_df.columns and 'default_flag' in analytics_df.columns:
-                fig_box, ax_box = plt.subplots(figsize=(6, 4))
-                sns.boxplot(data=analytics_df, x='default_flag', y='amount_kes', ax=ax_box, palette="Set2")
-                ax_box.set_title("Loan Amount by Default Status")
-                ax_box.set_xlabel("Default Status (0 = Performing, 1 = Defaulted)")
-                ax_box.set_ylabel("Loan Amount (KES)")
-                fig_box.patch.set_alpha(0.0)
-                ax_box.patch.set_alpha(0.0)
-                st.pyplot(fig_box)
-            else:
-                st.info("Missing required columns for this plot.")
-                
-        with col2b:
-            st.write("**Tenure Distribution (Seaborn KDE)**")
-            if 'tenure_days' in analytics_df.columns and 'default_flag' in analytics_df.columns:
-                fig_kde, ax_kde = plt.subplots(figsize=(6, 4))
-                sns.kdeplot(data=analytics_df, x='tenure_days', hue='default_flag', fill=True, common_norm=False, palette="Set1", ax=ax_kde)
-                ax_kde.set_title("Loan Tenure Density by Default Status")
-                ax_kde.set_xlabel("Tenure (Days)")
-                fig_kde.patch.set_alpha(0.0)
-                ax_kde.patch.set_alpha(0.0)
-                st.pyplot(fig_kde)
-            else:
-                st.info("Missing required columns for this plot.")
-
-    with tab3:
-        st.markdown("### Default Rate by Borrower Type")
-        if 'borrower_type' in analytics_df.columns and 'default_flag' in analytics_df.columns:
-            # Calculate default rate by borrower type
-            bt_stats = analytics_df.groupby('borrower_type')['default_flag'].mean().reset_index()
-            bt_stats['default_rate'] = bt_stats['default_flag'] * 100
-            
-            fig_bt = px.bar(bt_stats, x='borrower_type', y='default_rate', 
-                            title="Default Rate by Borrower Type (%)",
-                            color='borrower_type',
-                            labels={"borrower_type": "Borrower Type", "default_rate": "Default Rate (%)"})
-            st.plotly_chart(fig_bt, use_container_width=True)
-            
-            # Additional seaborn plot for count
-            st.write("**Loan Count by Borrower Type and Default Status (Seaborn)**")
-            fig_count, ax_count = plt.subplots(figsize=(8, 4))
-            sns.countplot(data=analytics_df, x='borrower_type', hue='default_flag', palette="viridis", ax=ax_count)
-            ax_count.set_title("Number of Loans by Borrower Type")
-            ax_count.set_xlabel("Borrower Type")
-            ax_count.set_ylabel("Count")
-            fig_count.patch.set_alpha(0.0)
-            ax_count.patch.set_alpha(0.0)
-            st.pyplot(fig_count)
-        else:
-            st.warning("Missing 'borrower_type' or 'default_flag' for this analysis.")
-
-    with tab4:
-        st.markdown("### Numeric Features Correlation & Relationships")
-        
-        # Select numeric columns
-        numeric_cols = analytics_df.select_dtypes(include=['number']).columns.tolist()
-        cols_to_exclude = ['session_id', 'borrower_id', 'loan_no', 'year']
-        numeric_cols = [c for c in numeric_cols if c not in cols_to_exclude]
-        
-        if len(numeric_cols) > 1:
-            st.write("**Correlation Heatmap (Seaborn)**")
-            corr_matrix = analytics_df[numeric_cols].corr()
-            
-            fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
-            sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax_corr)
-            ax_corr.set_title("Correlation Heatmap")
-            fig_corr.patch.set_alpha(0.0)
-            ax_corr.patch.set_alpha(0.0)
-            st.pyplot(fig_corr)
-            
-            # Pairplot
-            if st.checkbox("Show Pairplot (may be slow for large datasets)"):
-                st.write("**Pairwise Relationships (Seaborn)**")
-                # Limiting to a few key columns to prevent massive memory/time usage
-                pair_cols = [c for c in ['amount_kes', 'tenure_days', 'default_flag'] if c in numeric_cols]
-                if len(pair_cols) > 1:
-                    fig_pair = sns.pairplot(analytics_df[pair_cols].dropna(), hue='default_flag' if 'default_flag' in pair_cols else None, palette="husl")
-                    fig_pair.fig.patch.set_alpha(0.0)
-                    st.pyplot(fig_pair.fig)
-        else:
-            st.warning("Not enough numeric columns to compute correlations.")
-
-    with tab5:
-        st.markdown("### Macroeconomic Factors vs Loan Performance")
-        
-        # Identify macro columns (those that aren't the standard initial columns)
-        standard_cols = ['borrower_id', 'borrower_type', 'loan_no', 'loan_date', 'due_date', 
-                         'payoff_date', 'tenure_days', 'amount_kes', 'default_flag', 'session_id', 
-                         'country_code', 'year', 'year_month']
-        macro_cols = [c for c in analytics_df.columns if c not in standard_cols and pd.api.types.is_numeric_dtype(analytics_df[c])]
-        
-        if len(macro_cols) > 0:
-            st.info(f"Detected {len(macro_cols)} layered macro/alternative variables.")
-            
-            col_macro1, col_macro2 = st.columns([1, 2])
-            with col_macro1:
-                selected_macro = st.selectbox("Select Macro Variable to Analyze:", macro_cols)
-            
-            with col_macro2:
-                # Plot the selected macro variable distribution and its relation to default
-                if selected_macro:
-                    st.write(f"**Impact of {selected_macro} on Default (Plotly)**")
-                    fig_macro_scatter = px.box(analytics_df, x='default_flag', y=selected_macro,
-                                               color='default_flag',
-                                               labels={'default_flag': 'Default Status (0=Performing, 1=Defaulted)', selected_macro: selected_macro},
-                                               title=f"{selected_macro} Distribution by Default Status")
-                    st.plotly_chart(fig_macro_scatter, use_container_width=True)
-                    
+    def render_chart(chart_type, analytics_df, cell_id):
+        if chart_type == "None":
+            st.write("")
+        elif chart_type == "Time Series Analysis":
             if 'loan_date' in analytics_df.columns:
-                st.write(f"**{selected_macro} Over Time (Plotly)**")
-                # group by year_month if available, else year
-                if 'year_month' not in analytics_df.columns:
-                    analytics_df['year_month'] = analytics_df['loan_date'].dt.to_period('M').astype(str)
-                macro_time_df = analytics_df.groupby('year_month').agg({selected_macro: 'mean', 'default_flag': 'mean'}).reset_index()
-                macro_time_df['default_rate'] = macro_time_df['default_flag'] * 100
+                temp_df = analytics_df.copy()
+                temp_df['year_month'] = temp_df['loan_date'].dt.to_period('M').astype(str)
+                time_df = temp_df.groupby('year_month').agg(
+                    total_loans=('amount_kes', 'count'),
+                    total_amount=('amount_kes', 'sum'),
+                    defaults=('default_flag', 'sum')
+                ).reset_index()
+                time_df['default_rate'] = (time_df['defaults'] / time_df['total_loans']) * 100
                 
-                # Create a Plotly chart with secondary y-axis
-                from plotly.subplots import make_subplots
-                fig_macro_time = make_subplots(specs=[[{"secondary_y": True}]])
-                fig_macro_time.add_trace(go.Scatter(x=macro_time_df['year_month'], y=macro_time_df[selected_macro], name=selected_macro, line=dict(color='blue')), secondary_y=False)
-                fig_macro_time.add_trace(go.Scatter(x=macro_time_df['year_month'], y=macro_time_df['default_rate'], name='Default Rate (%)', line=dict(color='red', dash='dot')), secondary_y=True)
-                
-                fig_macro_time.update_layout(title_text=f"{selected_macro} and Default Rate Over Time")
-                fig_macro_time.update_xaxes(title_text="Month")
-                fig_macro_time.update_yaxes(title_text=selected_macro, secondary_y=False)
-                fig_macro_time.update_yaxes(title_text="Default Rate (%)", secondary_y=True)
-                
-                st.plotly_chart(fig_macro_time, use_container_width=True)
+                fig_time = px.line(time_df, x='year_month', y='total_amount', title="Loan Volume Over Time", markers=True)
+                st.plotly_chart(fig_time, use_container_width=True, key=f"fig_time_{cell_id}")
+                fig_rate = px.bar(time_df, x='year_month', y='default_rate', title="Default Rate Over Time", color='default_rate', color_continuous_scale='Reds')
+                st.plotly_chart(fig_rate, use_container_width=True, key=f"fig_rate_{cell_id}")
+            else:
+                st.warning("No 'loan_date' column available.")
+        elif chart_type == "Distribution & Composition":
+            if 'amount_kes' in analytics_df.columns and 'default_flag' in analytics_df.columns:
+                fig_box, ax_box = plt.subplots(figsize=(5, 3))
+                sns.boxplot(data=analytics_df, x='default_flag', y='amount_kes', ax=ax_box, palette="Set2")
+                ax_box.set_title("Amount by Default")
+                fig_box.patch.set_alpha(0.0)
+                st.pyplot(fig_box)
+            if 'tenure_days' in analytics_df.columns and 'default_flag' in analytics_df.columns:
+                fig_kde, ax_kde = plt.subplots(figsize=(5, 3))
+                sns.kdeplot(data=analytics_df, x='tenure_days', hue='default_flag', fill=True, common_norm=False, palette="Set1", ax=ax_kde)
+                ax_kde.set_title("Tenure by Default")
+                fig_kde.patch.set_alpha(0.0)
+                st.pyplot(fig_kde)
+        elif chart_type == "Categorical Breakdown":
+            if 'borrower_type' in analytics_df.columns and 'default_flag' in analytics_df.columns:
+                bt_stats = analytics_df.groupby('borrower_type')['default_flag'].mean().reset_index()
+                bt_stats['default_rate'] = bt_stats['default_flag'] * 100
+                fig_bt = px.bar(bt_stats, x='borrower_type', y='default_rate', title="Default Rate by Borrower Type", color='borrower_type')
+                st.plotly_chart(fig_bt, use_container_width=True, key=f"fig_bt_{cell_id}")
+        elif chart_type == "Correlation Heatmap":
+            numeric_cols = analytics_df.select_dtypes(include=['number']).columns.tolist()
+            cols_to_exclude = ['session_id', 'borrower_id', 'loan_no', 'year']
+            numeric_cols = [c for c in numeric_cols if c not in cols_to_exclude]
+            if len(numeric_cols) > 1:
+                corr_matrix = analytics_df[numeric_cols].corr()
+                fig_corr, ax_corr = plt.subplots(figsize=(6, 5))
+                sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax_corr)
+                ax_corr.set_title("Correlation Heatmap")
+                fig_corr.patch.set_alpha(0.0)
+                st.pyplot(fig_corr)
+        elif chart_type == "Macroeconomic Impact":
+            standard_cols = ['borrower_id', 'borrower_type', 'loan_no', 'loan_date', 'due_date', 'payoff_date', 'tenure_days', 'amount_kes', 'default_flag', 'session_id', 'country_code', 'year', 'year_month']
+            macro_cols = [c for c in analytics_df.columns if c not in standard_cols and pd.api.types.is_numeric_dtype(analytics_df[c])]
+            if len(macro_cols) > 0:
+                selected_macro = st.selectbox("Select Macro Variable:", macro_cols, key=f"macro_sel_{cell_id}")
+                if selected_macro:
+                    fig_macro_scatter = px.box(analytics_df, x='default_flag', y=selected_macro, color='default_flag', title=f"{selected_macro} by Default")
+                    st.plotly_chart(fig_macro_scatter, use_container_width=True, key=f"fig_macro_{cell_id}")
+            else:
+                st.warning("No external macro variables detected.")
 
-        else:
-            st.warning("No external macro/alternative numerical variables detected. Please ensure you layered alternative data in the pipeline step.")
+    st.write("### 🎛️ Customizable Dashboard Grid")
+    chart_options = ["None", "Time Series Analysis", "Distribution & Composition", "Categorical Breakdown", "Correlation Heatmap", "Macroeconomic Impact"]
+    
+    # ROW 1 (3 Cells)
+    row1_cols = st.columns(3)
+    with row1_cols[0]:
+        with st.container(border=True):
+            cell1_choice = st.selectbox("Widget 1", chart_options, index=1, key="c1")
+            render_chart(cell1_choice, analytics_df, "1")
+    with row1_cols[1]:
+        with st.container(border=True):
+            cell2_choice = st.selectbox("Widget 2", chart_options, index=2, key="c2")
+            render_chart(cell2_choice, analytics_df, "2")
+    with row1_cols[2]:
+        with st.container(border=True):
+            cell3_choice = st.selectbox("Widget 3", chart_options, index=3, key="c3")
+            render_chart(cell3_choice, analytics_df, "3")
+            
+    st.write("---")
+    
+    # ROW 2 (2 Cells)
+    row2_cols = st.columns(2)
+    with row2_cols[0]:
+        with st.container(border=True):
+            cell4_choice = st.selectbox("Widget 4", chart_options, index=4, key="c4")
+            render_chart(cell4_choice, analytics_df, "4")
+    with row2_cols[1]:
+        with st.container(border=True):
+            cell5_choice = st.selectbox("Widget 5", chart_options, index=5, key="c5")
+            render_chart(cell5_choice, analytics_df, "5")
 
     st.write("---")
     
@@ -565,3 +498,45 @@ elif st.session_state.current_page == "dashboard":
                 st.warning(f"Could not generate SHAP values for {model_name}. Error: {e}")
 
             st.write("---")
+
+# ==========================================
+# PAGE 3: DATA VIEWER & EXPORT
+# ==========================================
+elif st.session_state.current_page == "data_viewer":
+    st.title("🗂️ Data Viewer & Export")
+    
+    if st.button("← Back to Dashboard"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    st.write("---")
+    
+    if st.session_state.final_layered_df is not None:
+        st.write("### Transformed Data Preview")
+        st.dataframe(st.session_state.final_layered_df.head(100))
+        
+        col_csv, col_excel = st.columns(2)
+        
+        with col_csv:
+            csv_data = st.session_state.final_layered_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv_data,
+                file_name="layered_loan_data.csv",
+                mime="text/csv"
+            )
+            
+        with col_excel:
+            # Generate Excel using openpyxl in memory
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                st.session_state.final_layered_df.to_excel(writer, index=False, sheet_name='Data')
+            
+            st.download_button(
+                label="📥 Download as Excel",
+                data=buffer.getvalue(),
+                file_name="layered_loan_data.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    else:
+        st.warning("No data available. Please ingest data in the Pipeline first.")
