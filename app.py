@@ -1,14 +1,15 @@
 import streamlit as st
-import sqlite3
-import duckdb
 import pandas as pd
-import uuid
+import duckdb
+import sqlite3
 import os
+import io
 import matplotlib.pyplot as plt
 import shap
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
+import uuid
 import streamlit.components.v1 as components
 import io
 
@@ -368,6 +369,17 @@ elif st.session_state.current_page == "dashboard":
         if selected_year != 'All':
             analytics_df = analytics_df[analytics_df['year'] == selected_year]
             
+    def get_matplotlib_img(fig):
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches='tight', transparent=True)
+        return buf.getvalue()
+        
+    def get_plotly_img(fig):
+        try:
+            return fig.to_image(format="png")
+        except Exception:
+            return None
+
     def render_chart(chart_type, analytics_df, cell_id):
         if chart_type == "None":
             st.write("")
@@ -384,8 +396,11 @@ elif st.session_state.current_page == "dashboard":
                 
                 fig_time = px.line(time_df, x='year_month', y='total_amount', title="Loan Volume Over Time", markers=True)
                 st.plotly_chart(fig_time, use_container_width=True, key=f"fig_time_{cell_id}")
+                st.download_button("📥 Download", data=get_plotly_img(fig_time), file_name=f"volume_{cell_id}.png", mime="image/png", key=f"dl_time_{cell_id}")
+                
                 fig_rate = px.bar(time_df, x='year_month', y='default_rate', title="Default Rate Over Time", color='default_rate', color_continuous_scale='Reds')
                 st.plotly_chart(fig_rate, use_container_width=True, key=f"fig_rate_{cell_id}")
+                st.download_button("📥 Download", data=get_plotly_img(fig_rate), file_name=f"rate_{cell_id}.png", mime="image/png", key=f"dl_rate_{cell_id}")
             else:
                 st.warning("No 'loan_date' column available.")
         elif chart_type == "Distribution & Composition":
@@ -395,18 +410,21 @@ elif st.session_state.current_page == "dashboard":
                 ax_box.set_title("Amount by Default")
                 fig_box.patch.set_alpha(0.0)
                 st.pyplot(fig_box)
+                st.download_button("📥 Download", data=get_matplotlib_img(fig_box), file_name=f"amount_{cell_id}.png", mime="image/png", key=f"dl_amount_{cell_id}")
             if 'tenure_days' in analytics_df.columns and 'default_flag' in analytics_df.columns:
                 fig_kde, ax_kde = plt.subplots(figsize=(5, 3))
                 sns.kdeplot(data=analytics_df, x='tenure_days', hue='default_flag', fill=True, common_norm=False, palette="Set1", ax=ax_kde)
                 ax_kde.set_title("Tenure by Default")
                 fig_kde.patch.set_alpha(0.0)
                 st.pyplot(fig_kde)
+                st.download_button("📥 Download", data=get_matplotlib_img(fig_kde), file_name=f"tenure_{cell_id}.png", mime="image/png", key=f"dl_tenure_{cell_id}")
         elif chart_type == "Categorical Breakdown":
             if 'borrower_type' in analytics_df.columns and 'default_flag' in analytics_df.columns:
                 bt_stats = analytics_df.groupby('borrower_type')['default_flag'].mean().reset_index()
                 bt_stats['default_rate'] = bt_stats['default_flag'] * 100
                 fig_bt = px.bar(bt_stats, x='borrower_type', y='default_rate', title="Default Rate by Borrower Type", color='borrower_type')
                 st.plotly_chart(fig_bt, use_container_width=True, key=f"fig_bt_{cell_id}")
+                st.download_button("📥 Download", data=get_plotly_img(fig_bt), file_name=f"categorical_{cell_id}.png", mime="image/png", key=f"dl_cat_{cell_id}")
         elif chart_type == "Correlation Heatmap":
             numeric_cols = analytics_df.select_dtypes(include=['number']).columns.tolist()
             cols_to_exclude = ['session_id', 'borrower_id', 'loan_no', 'year']
@@ -418,6 +436,7 @@ elif st.session_state.current_page == "dashboard":
                 ax_corr.set_title("Correlation Heatmap")
                 fig_corr.patch.set_alpha(0.0)
                 st.pyplot(fig_corr)
+                st.download_button("📥 Download", data=get_matplotlib_img(fig_corr), file_name=f"corr_{cell_id}.png", mime="image/png", key=f"dl_corr_{cell_id}")
         elif chart_type == "Macroeconomic Impact":
             standard_cols = ['borrower_id', 'borrower_type', 'loan_no', 'loan_date', 'due_date', 'payoff_date', 'tenure_days', 'amount_kes', 'default_flag', 'session_id', 'country_code', 'year', 'year_month']
             macro_cols = [c for c in analytics_df.columns if c not in standard_cols and pd.api.types.is_numeric_dtype(analytics_df[c])]
@@ -426,6 +445,7 @@ elif st.session_state.current_page == "dashboard":
                 if selected_macro:
                     fig_macro_scatter = px.box(analytics_df, x='default_flag', y=selected_macro, color='default_flag', title=f"{selected_macro} by Default")
                     st.plotly_chart(fig_macro_scatter, use_container_width=True, key=f"fig_macro_{cell_id}")
+                    st.download_button("📥 Download", data=get_plotly_img(fig_macro_scatter), file_name=f"macro_{cell_id}.png", mime="image/png", key=f"dl_mac_{cell_id}")
             else:
                 st.warning("No external macro variables detected.")
 

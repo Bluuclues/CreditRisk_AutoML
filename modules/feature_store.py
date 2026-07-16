@@ -34,11 +34,11 @@ def apply_macro_layers(duck_conn, selected_layers, data_dir):
         LEFT JOIN macro_warehouse_temp macro
             ON loan.country_code = macro.country_code 
             AND (
-                -- If macro data is Annual, we join strictly by matching the extracted year
-                (macro.frequency = 'Annual' AND CAST(loan.year AS VARCHAR) = CAST(macro.year AS VARCHAR))
+                -- If macro data is Annual, we join strictly by matching the extracted year. Cast to INT to fix 2010.0 != 2010
+                (macro.frequency = 'Annual' AND CAST(loan.year AS INTEGER) = CAST(macro.year AS INTEGER))
                 OR
                 -- Fallback for non-annual or unknown frequency (e.g. if we add Monthly data later)
-                (macro.frequency != 'Annual' AND CAST(loan.year AS VARCHAR) = CAST(macro.year AS VARCHAR))
+                (macro.frequency != 'Annual' AND CAST(loan.year AS INTEGER) = CAST(macro.year AS INTEGER))
             )
     """)
     
