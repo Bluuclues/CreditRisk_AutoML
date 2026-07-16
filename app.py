@@ -133,7 +133,7 @@ if st.session_state.current_page == "pipeline":
                 st.session_state.primary_df = pd.read_csv(uploaded_file)
                 
                 if 'loan_date' in st.session_state.primary_df.columns:
-                    st.session_state.primary_df['loan_date'] = pd.to_datetime(st.session_state.primary_df['loan_date'], errors='coerce')
+                    st.session_state.primary_df['loan_date'] = pd.to_datetime(st.session_state.primary_df['loan_date'], errors='coerce', format='mixed', dayfirst=True)
                     st.session_state.primary_df['year'] = st.session_state.primary_df['loan_date'].dt.year
                 
                 st.session_state.primary_df['session_id'] = st.session_state.session_id

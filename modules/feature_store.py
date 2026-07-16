@@ -32,7 +32,7 @@ def apply_macro_layers(duck_conn, selected_layers, data_dir):
             macro.* EXCLUDE (country_code, country_name, year, indicator_type)
         FROM ml_features loan
         LEFT JOIN macro_warehouse_temp macro
-            ON loan.country_code = macro.country_code 
+            ON TRIM(loan.country_code) = TRIM(macro.country_code) 
             AND (
                 -- If macro data is Annual, we join strictly by matching the extracted year. Cast to INT to fix 2010.0 != 2010
                 (macro.frequency = 'Annual' AND CAST(loan.year AS INTEGER) = CAST(macro.year AS INTEGER))
