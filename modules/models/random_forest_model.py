@@ -48,6 +48,7 @@ def train_and_evaluate(df):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, 1] # Probability of Default (PD)
 
     metrics = {
         'accuracy': accuracy_score(y_test, y_pred),
@@ -60,5 +61,6 @@ def train_and_evaluate(df):
         'metrics': metrics, 
         'X_test': X_test, 
         'y_test': y_test, 
-        'y_pred': y_pred
+        'y_pred': y_pred,
+        'y_prob': y_prob
     }

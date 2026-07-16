@@ -498,6 +498,41 @@ elif st.session_state.current_page == "dashboard":
                 st.warning(f"Could not generate SHAP values for {model_name}. Error: {e}")
 
             st.write("---")
+            st.subheader("💼 Credit Analyst Metrics (PD & LGD)")
+            
+            # Use original dataframe to recover loan IDs and amounts for the test set
+            try:
+                original_indices = results['X_test'].index
+                test_loans = df.loc[original_indices].copy()
+                
+                # Assign Probability of Default
+                test_loans['Probability of Default (PD)'] = results['y_prob']
+                
+                # User-defined LGD since we do not have an explicit recovery cash flow column
+                lgd_val = st.slider(f"Set Baseline Loss Given Default (LGD) for {model_name} (%)", min_value=10, max_value=100, value=45, step=5) / 100.0
+                test_loans['Loss Given Default (LGD)'] = lgd_val
+                
+                if 'amount_kes' in test_loans.columns:
+                    test_loans['Exposure at Default (EAD)'] = test_loans['amount_kes']
+                    test_loans['Expected Loss (EL)'] = test_loans['Probability of Default (PD)'] * test_loans['Loss Given Default (LGD)'] * test_loans['Exposure at Default (EAD)']
+                    
+                    total_ead = test_loans['Exposure at Default (EAD)'].sum()
+                    total_el = test_loans['Expected Loss (EL)'].sum()
+                    portfolio_el_rate = (total_el / total_ead) * 100 if total_ead > 0 else 0
+                    
+                    st.info(f"**Aggregate Portfolio Metrics (Test Set):** Total EAD: {total_ead:,.2f} KES | Total Expected Loss: {total_el:,.2f} KES | Portfolio EL Rate: {portfolio_el_rate:.2f}%")
+                
+                # Display output table
+                display_cols = ['borrower_id', 'loan_no', 'amount_kes', 'Probability of Default (PD)', 'Loss Given Default (LGD)', 'Expected Loss (EL)']
+                display_cols = [c for c in display_cols if c in test_loans.columns]
+                
+                st.dataframe(test_loans[display_cols].head(50), use_container_width=True)
+                
+            except Exception as e:
+                st.warning(f"Could not calculate Credit Metrics for {model_name}. Error: {e}")
+
+            st.write("---")
+
 
 # ==========================================
 # PAGE 3: DATA VIEWER & EXPORT

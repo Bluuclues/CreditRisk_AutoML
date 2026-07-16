@@ -24,16 +24,22 @@ def apply_macro_layers(duck_conn, selected_layers, data_dir):
     duck_conn.register('macro_warehouse_temp', macro_df)
     
     # 3. Run the SQL Transformation
+    # The join logic dynamically checks if the data is annual and matches on the extracted loan year.
     duck_conn.execute("""
         CREATE OR REPLACE TABLE ml_features AS 
         SELECT 
             loan.*,
-            macro.gdp_usd,
-            macro.frequency AS macro_frequency
+            macro.* EXCLUDE (country_code, country_name, year, indicator_type)
         FROM ml_features loan
         LEFT JOIN macro_warehouse_temp macro
             ON loan.country_code = macro.country_code 
-            AND CAST(loan.year AS VARCHAR) = CAST(macro.year AS VARCHAR)
+            AND (
+                -- If macro data is Annual, we join strictly by matching the extracted year
+                (macro.frequency = 'Annual' AND CAST(loan.year AS VARCHAR) = CAST(macro.year AS VARCHAR))
+                OR
+                -- Fallback for non-annual or unknown frequency (e.g. if we add Monthly data later)
+                (macro.frequency != 'Annual' AND CAST(loan.year AS VARCHAR) = CAST(macro.year AS VARCHAR))
+            )
     """)
     
     # 4. Fetch and return the newly transformed data
