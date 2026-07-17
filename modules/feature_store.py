@@ -11,9 +11,10 @@ def apply_macro_layers(duck_conn, selected_layers, data_dir):
     if 'macro_layer.db' not in selected_layers:
         return duck_conn.execute("SELECT * FROM ml_features").df()
 
-    # Using the exact absolute path you provided. 
-    # The 'r' before the string ensures Python reads the Windows backslashes correctly.
-    db_path = r"C:\Users\franc\OneDrive\KBA_2026_PROJECT\credit-risk-automl\Data\Alternative_Data\macro_layer.db"
+    import os
+    
+    # Use the relative path passed down from app.py to make it deployable anywhere
+    db_path = os.path.join(data_dir, "macro_layer.db")
     
     # 1. Read macro data from SQLite disk storage
     ext_conn = sqlite3.connect(db_path)

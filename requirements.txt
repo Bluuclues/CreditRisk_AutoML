@@ -8,3 +8,5 @@ seaborn
 plotly
 streamlit_elements
 openpyxl
+xgboost
+kaleido
