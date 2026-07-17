@@ -7,6 +7,10 @@
 *.csv
 *.xlsx
 
+# Allow Alternative Data to be pushed to deployment
+!Data/Alternative_Data/*.db
+!Data/Alternative_Data/*.csv
+
 # Ignore Python Environment Files
 venv/
 __pycache__/
