@@ -107,11 +107,11 @@ if st.session_state.current_page == "pipeline":
                 * **due_date**: Contractual maturity date.
                 * **payoff_date**: Actual repayment date (leave blank if active).
                 * **tenure_days**: Total duration in days.
-                * **amount_kes**: Principal amount (numeric).
+                * **amount**: Principal amount (numeric).
                 * **default_flag**: Target Variable (1 = Defaulted, 0 = Performing).
                 """)
                 
-                template_csv = "borrower_id,borrower_type,loan_no,loan_date,due_date,payoff_date,tenure_days,amount_kes,default_flag\n"
+                template_csv = "borrower_id,borrower_type,loan_no,loan_date,due_date,payoff_date,tenure_days,amount,default_flag\n"
                 st.download_button(
                     label="⬇️ Download Blank CSV Template",
                     data=template_csv,
@@ -383,12 +383,12 @@ elif st.session_state.current_page == "dashboard":
         if chart_type == "None":
             st.write("")
         elif chart_type == "Time Series Analysis":
-            if 'loan_date' in analytics_df.columns:
+            if all(col in analytics_df.columns for col in ['loan_date', 'amount', 'default_flag']):
                 temp_df = analytics_df.copy()
                 temp_df['year_month'] = temp_df['loan_date'].dt.to_period('M').astype(str)
                 time_df = temp_df.groupby('year_month').agg(
-                    total_loans=('amount_kes', 'count'),
-                    total_amount=('amount_kes', 'sum'),
+                    total_loans=('amount', 'count'),
+                    total_amount=('amount', 'sum'),
                     defaults=('default_flag', 'sum')
                 ).reset_index()
                 time_df['default_rate'] = (time_df['defaults'] / time_df['total_loans']) * 100
@@ -401,11 +401,11 @@ elif st.session_state.current_page == "dashboard":
                 st.plotly_chart(fig_rate, use_container_width=True, key=f"fig_rate_{cell_id}")
                 st.download_button("📥 Download", data=get_plotly_img(fig_rate), file_name=f"rate_{cell_id}.png", mime="image/png", key=f"dl_rate_{cell_id}")
             else:
-                st.warning("No 'loan_date' column available.")
+                st.warning("Time Series requires 'loan_date', 'amount', and 'default_flag' columns.")
         elif chart_type == "Distribution & Composition":
-            if 'amount_kes' in analytics_df.columns and 'default_flag' in analytics_df.columns:
+            if 'amount' in analytics_df.columns and 'default_flag' in analytics_df.columns:
                 fig_box, ax_box = plt.subplots(figsize=(5, 3))
-                sns.boxplot(data=analytics_df, x='default_flag', y='amount_kes', ax=ax_box, palette="Set2")
+                sns.boxplot(data=analytics_df, x='default_flag', y='amount', ax=ax_box, palette="Set2")
                 ax_box.set_title("Amount by Default")
                 fig_box.patch.set_alpha(0.0)
                 st.pyplot(fig_box)
@@ -437,7 +437,7 @@ elif st.session_state.current_page == "dashboard":
                 st.pyplot(fig_corr)
                 st.download_button("📥 Download", data=get_matplotlib_img(fig_corr), file_name=f"corr_{cell_id}.png", mime="image/png", key=f"dl_corr_{cell_id}")
         elif chart_type == "Macroeconomic Impact":
-            standard_cols = ['borrower_id', 'borrower_type', 'loan_no', 'loan_date', 'due_date', 'payoff_date', 'tenure_days', 'amount_kes', 'default_flag', 'session_id', 'country_code', 'year', 'year_month']
+            standard_cols = ['borrower_id', 'borrower_type', 'loan_no', 'loan_date', 'due_date', 'payoff_date', 'tenure_days', 'amount', 'default_flag', 'session_id', 'country_code', 'year', 'year_month']
             macro_cols = [c for c in analytics_df.columns if c not in standard_cols and pd.api.types.is_numeric_dtype(analytics_df[c])]
             if len(macro_cols) > 0:
                 selected_macro = st.selectbox("Select Macro Variable:", macro_cols, key=f"macro_sel_{cell_id}")
@@ -531,8 +531,8 @@ elif st.session_state.current_page == "dashboard":
                 lgd_val = st.slider(f"Set Baseline Loss Given Default (LGD) for {model_name} (%)", min_value=10, max_value=100, value=45, step=5) / 100.0
                 test_loans['Loss Given Default (LGD)'] = lgd_val
                 
-                if 'amount_kes' in test_loans.columns:
-                    test_loans['Exposure at Default (EAD)'] = test_loans['amount_kes']
+                if 'amount' in test_loans.columns:
+                    test_loans['Exposure at Default (EAD)'] = test_loans['amount']
                     test_loans['Expected Loss (EL)'] = test_loans['Probability of Default (PD)'] * test_loans['Loss Given Default (LGD)'] * test_loans['Exposure at Default (EAD)']
                     
                     total_ead = test_loans['Exposure at Default (EAD)'].sum()
@@ -542,7 +542,7 @@ elif st.session_state.current_page == "dashboard":
                     st.info(f"**Aggregate Portfolio Metrics (Test Set):** Total EAD: {total_ead:,.2f} KES | Total Expected Loss: {total_el:,.2f} KES | Portfolio EL Rate: {portfolio_el_rate:.2f}%")
                 
                 # Display output table
-                display_cols = ['borrower_id', 'loan_no', 'amount_kes', 'Probability of Default (PD)', 'Loss Given Default (LGD)', 'Expected Loss (EL)']
+                display_cols = ['borrower_id', 'loan_no', 'amount', 'Probability of Default (PD)', 'Loss Given Default (LGD)', 'Expected Loss (EL)']
                 display_cols = [c for c in display_cols if c in test_loans.columns]
                 
                 st.dataframe(test_loans[display_cols].head(50), use_container_width=True)
