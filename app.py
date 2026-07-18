@@ -60,7 +60,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALTERNATIVE_DATA_DIR = os.path.join(BASE_DIR, "Data", "Alternative_Data")
 
 # --- COUNTRY CODE MAPPING ---
-@st.cache_data
 def load_country_mapping():
     db_path = os.path.join(ALTERNATIVE_DATA_DIR, 'countries.db')
     if os.path.exists(db_path):
