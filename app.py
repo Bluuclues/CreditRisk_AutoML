@@ -379,6 +379,12 @@ elif st.session_state.current_page == "dashboard":
         except Exception:
             return None
 
+    def render_plotly_with_download(fig, filename, key):
+        st.plotly_chart(fig, use_container_width=True, key=key, config={'displayModeBar': True, 'toImageButtonOptions': {'format': 'png', 'filename': filename}})
+        img_data = get_plotly_img(fig)
+        if img_data:
+            st.download_button("📥 Download Chart", data=img_data, file_name=f"{filename}.png", mime="image/png", key=f"dl_{key}")
+
     def render_chart(chart_type, analytics_df, cell_id):
         if chart_type == "None":
             st.write("")
@@ -394,12 +400,10 @@ elif st.session_state.current_page == "dashboard":
                 time_df['default_rate'] = (time_df['defaults'] / time_df['total_loans']) * 100
                 
                 fig_time = px.line(time_df, x='year_month', y='total_amount', title="Loan Volume Over Time", markers=True)
-                st.plotly_chart(fig_time, use_container_width=True, key=f"fig_time_{cell_id}")
-                st.download_button("📥 Download", data=get_plotly_img(fig_time), file_name=f"volume_{cell_id}.png", mime="image/png", key=f"dl_time_{cell_id}")
+                render_plotly_with_download(fig_time, f"volume_{cell_id}", f"fig_time_{cell_id}")
                 
                 fig_rate = px.bar(time_df, x='year_month', y='default_rate', title="Default Rate Over Time", color='default_rate', color_continuous_scale='Reds')
-                st.plotly_chart(fig_rate, use_container_width=True, key=f"fig_rate_{cell_id}")
-                st.download_button("📥 Download", data=get_plotly_img(fig_rate), file_name=f"rate_{cell_id}.png", mime="image/png", key=f"dl_rate_{cell_id}")
+                render_plotly_with_download(fig_rate, f"rate_{cell_id}", f"fig_rate_{cell_id}")
             else:
                 st.warning("Time Series requires 'loan_date', 'amount', and 'default_flag' columns.")
         elif chart_type == "Distribution & Composition":
@@ -422,8 +426,7 @@ elif st.session_state.current_page == "dashboard":
                 bt_stats = analytics_df.groupby('borrower_type')['default_flag'].mean().reset_index()
                 bt_stats['default_rate'] = bt_stats['default_flag'] * 100
                 fig_bt = px.bar(bt_stats, x='borrower_type', y='default_rate', title="Default Rate by Borrower Type", color='borrower_type')
-                st.plotly_chart(fig_bt, use_container_width=True, key=f"fig_bt_{cell_id}")
-                st.download_button("📥 Download", data=get_plotly_img(fig_bt), file_name=f"categorical_{cell_id}.png", mime="image/png", key=f"dl_cat_{cell_id}")
+                render_plotly_with_download(fig_bt, f"categorical_{cell_id}", f"fig_bt_{cell_id}")
         elif chart_type == "Correlation Heatmap":
             numeric_cols = analytics_df.select_dtypes(include=['number']).columns.tolist()
             cols_to_exclude = ['session_id', 'borrower_id', 'loan_no', 'year']
@@ -443,8 +446,7 @@ elif st.session_state.current_page == "dashboard":
                 selected_macro = st.selectbox("Select Macro Variable:", macro_cols, key=f"macro_sel_{cell_id}")
                 if selected_macro:
                     fig_macro_scatter = px.box(analytics_df, x='default_flag', y=selected_macro, color='default_flag', title=f"{selected_macro} by Default")
-                    st.plotly_chart(fig_macro_scatter, use_container_width=True, key=f"fig_macro_{cell_id}")
-                    st.download_button("📥 Download", data=get_plotly_img(fig_macro_scatter), file_name=f"macro_{cell_id}.png", mime="image/png", key=f"dl_mac_{cell_id}")
+                    render_plotly_with_download(fig_macro_scatter, f"macro_{cell_id}", f"fig_macro_{cell_id}")
             else:
                 st.warning("No external macro variables detected.")
 
