@@ -13,3 +13,4 @@ lightgbm
 catboost
 optuna
 kaleido
+numpy
