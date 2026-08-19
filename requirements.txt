@@ -9,4 +9,8 @@ plotly
 streamlit_elements
 openpyxl
 xgboost
+lightgbm
+catboost
+optuna
+pycaret
 kaleido
