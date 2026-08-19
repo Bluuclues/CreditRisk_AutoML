@@ -12,5 +12,4 @@ xgboost
 lightgbm
 catboost
 optuna
-pycaret
 kaleido
