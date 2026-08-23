@@ -278,8 +278,10 @@ class CreditRiskAutoMLEngine:
                 except Exception:
                     pass
 
-            if progress_callback:
-                progress_callback(90, "Finalizing champion pipeline across full portfolio...")
+            if self.config.create_ensemble and len(self.best_models) >= 2:
+                self.champion_name = f"PyCaret Soft-Voting Blend ({len(self.best_models)} Estimators)"
+            else:
+                self.champion_name = str(getattr(selected_model, '__class__', type(selected_model)).__name__)
 
             self.champion_model = self.exp.finalize_model(selected_model)
 
@@ -305,6 +307,7 @@ class CreditRiskAutoMLEngine:
                 self.best_models = [self.best_models]
 
             self.leaderboard = self.exp.pull()
+            self.champion_name = str(getattr(self.best_models[0], '__class__', type(self.best_models[0])).__name__)
             self.champion_model = self.exp.finalize_model(self.best_models[0])
 
         if progress_callback:
@@ -313,6 +316,7 @@ class CreditRiskAutoMLEngine:
         return {
             "task_type": self.task_type,
             "champion_model": self.champion_model,
+            "champion_name": self.champion_name,
             "leaderboard": self.leaderboard,
             "top_models": self.best_models,
             "experiment": self.exp,
@@ -423,6 +427,7 @@ class CreditRiskAutoMLEngine:
             try:
                 top2 = leaderboard_df.head(2)
                 top_pipes = [results_list[idx]["pipeline"] for idx in top2.index]
+                top_names = [leaderboard_df.iloc[i]["Model"] for i in range(min(2, len(leaderboard_df)))]
                 ensemble_estimators = [
                     (f"m_{i}", top_pipes[i].named_steps["classifier"]) for i in range(len(top_pipes))
                 ]
@@ -430,12 +435,15 @@ class CreditRiskAutoMLEngine:
                 ensemble_pipe = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', voting_clf)])
                 ensemble_pipe.fit(X, y)
                 self.champion_model = ensemble_pipe
+                self.champion_name = f"Soft-Voting Ensemble ({' + '.join(top_names)})"
             except Exception:
                 champion_pipe.fit(X, y)
                 self.champion_model = champion_pipe
+                self.champion_name = leaderboard_df.iloc[0]["Model"]
         else:
             champion_pipe.fit(X, y)
             self.champion_model = champion_pipe
+            self.champion_name = leaderboard_df.iloc[0]["Model"]
 
         self.best_models = [row["pipeline"] for row in results_list]
 
@@ -445,6 +453,7 @@ class CreditRiskAutoMLEngine:
         return {
             "task_type": self.task_type,
             "champion_model": self.champion_model,
+            "champion_name": self.champion_name,
             "leaderboard": self.leaderboard,
             "top_models": self.best_models,
             "X_test": X_test,

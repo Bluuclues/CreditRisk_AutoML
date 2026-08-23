@@ -407,7 +407,21 @@ if st.session_state.training_completed and st.session_state.automl_results is no
     explainer: Optional[CreditRiskExplainer] = results.get("explainer", None)
     leaderboard_df = results.get("leaderboard", pd.DataFrame())
 
+    champion_name = results.get("champion_name", "AutoML Champion Model")
+    engine_name = results.get("engine_name", "AutoML Engine")
+
     st.markdown("## 📈 4. Onset Default Risk Screening & Live Analytics")
+
+    # --- CHAMPION MODEL ANNOUNCEMENT BANNER ---
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px; padding: 16px 22px; margin-bottom: 20px; border-left: 6px solid #3b82f6; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; font-weight: 700;">🏆 Winning Champion Model Selected by AutoML</div>
+        <div style="font-size: 22px; font-weight: 800; color: #60a5fa; margin-top: 4px;">{champion_name}</div>
+        <div style="font-size: 13px; color: #cbd5e1; margin-top: 4px;">
+            <b>Active Architecture:</b> {champion_name} &nbsp;|&nbsp; <b>Execution Engine:</b> {engine_name} &nbsp;|&nbsp; <b>Explainability:</b> TreeSHAP Feature Attributions
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # --- 4.1 EXECUTIVE KPI ROW ---
     total_records = len(df)
@@ -415,12 +429,12 @@ if st.session_state.training_completed and st.session_state.automl_results is no
     mean_pred_pd = np.mean(probs) * 100.0
     high_risk_count = int(np.sum(probs >= 0.60))
 
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
     with kpi1:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">Evaluated Portfolio Volume</div>
+            <div class="kpi-title">Evaluated Portfolio</div>
             <div class="kpi-value">{total_records:,} Records</div>
         </div>
         """, unsafe_allow_html=True)
@@ -436,7 +450,7 @@ if st.session_state.training_completed and st.session_state.automl_results is no
     with kpi3:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">Predicted Portfolio Mean PD</div>
+            <div class="kpi-title">Predicted Mean PD</div>
             <div class="kpi-value" style="color: #d97706;">{mean_pred_pd:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
@@ -444,8 +458,16 @@ if st.session_state.training_completed and st.session_state.automl_results is no
     with kpi4:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">High Risk Borrowers (PD > 60%)</div>
+            <div class="kpi-title">High Risk Borrowers</div>
             <div class="kpi-value" style="color: #dc2626;">{high_risk_count:,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with kpi5:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Champion Algorithm</div>
+            <div class="kpi-value" style="font-size: 15px; color: #2563eb; line-height: 1.3; font-weight: 700; word-break: break-word;">{champion_name}</div>
         </div>
         """, unsafe_allow_html=True)
 
