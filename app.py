@@ -16,6 +16,7 @@ from modules.data_validator import CreditRiskDataValidator
 from modules.feature_store import apply_macro_layers, export_parquet_snapshot, export_parquet_bytes, export_csv_bytes
 from modules.models.dispatcher import run_automl_pipeline
 from modules.models.shap_explainer import CreditRiskExplainer
+from modules.eda_visualizer import CreditRiskEDA
 
 # Streamlit Page Config - Wide Layout
 st.set_page_config(
@@ -259,6 +260,94 @@ if st.session_state.data_ingested:
                     )
                 except Exception:
                     st.caption("Parquet export engine (pyarrow) optional")
+
+    st.write("---")
+
+    # ==============================================================================
+    # SECTION 2.5: EXPLORATORY DATA ANALYSIS (EDA) & DESCRIPTIVE STATISTICS
+    # ==============================================================================
+    with st.expander("📊 2.5 Exploratory Data Analysis (EDA) & Descriptive Statistics Hub", expanded=False):
+        st.markdown("Automated portfolio profiling, collinearity heatmaps, and distribution histograms for risk analysts and data scientists.")
+        
+        active_eda_df = st.session_state.final_layered_df
+        
+        tab_stat, tab_dist, tab_corr, tab_box = st.tabs([
+            "📋 Descriptive Statistics Table", 
+            "📈 Distribution Histograms", 
+            "🔥 Collinearity Heatmap", 
+            "📦 Outliers & Quantile Boxplots"
+        ])
+        
+        with tab_stat:
+            stats_df = CreditRiskEDA.generate_descriptive_stats_df(active_eda_df)
+            st.dataframe(stats_df, use_container_width=True)
+            
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                st.download_button(
+                    label="📥 Download Descriptive Statistics (.CSV)",
+                    data=stats_df.to_csv(index=False).encode('utf-8'),
+                    file_name="kba_descriptive_statistics.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            with col_d2:
+                buf_stat = io.BytesIO()
+                with pd.ExcelWriter(buf_stat, engine='openpyxl') as writer:
+                    stats_df.to_excel(writer, index=False, sheet_name='Descriptive_Stats')
+                st.download_button(
+                    label="📥 Download Descriptive Statistics (.Excel)",
+                    data=buf_stat.getvalue(),
+                    file_name="kba_descriptive_statistics.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+                
+        with tab_dist:
+            dist_fig = CreditRiskEDA.generate_feature_distributions_fig(active_eda_df)
+            if dist_fig:
+                st.plotly_chart(dist_fig, use_container_width=True)
+            dist_png = CreditRiskEDA.generate_feature_distributions_bytes(active_eda_df)
+            if dist_png:
+                st.download_button(
+                    label="⬇️ Download Distribution Histograms (.PNG)",
+                    data=dist_png,
+                    file_name="kba_feature_distributions.png",
+                    mime="image/png",
+                    use_container_width=True
+                )
+                
+        with tab_corr:
+            corr_fig = CreditRiskEDA.generate_correlation_heatmap_fig(active_eda_df)
+            if corr_fig:
+                st.plotly_chart(corr_fig, use_container_width=True)
+            
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                corr_png = CreditRiskEDA.generate_correlation_heatmap_bytes(active_eda_df)
+                if corr_png:
+                    st.download_button(
+                        label="⬇️ Download Correlation Heatmap (.PNG)",
+                        data=corr_png,
+                        file_name="kba_correlation_heatmap.png",
+                        mime="image/png",
+                        use_container_width=True
+                    )
+            with col_c2:
+                corr_matrix = CreditRiskEDA.generate_correlation_matrix(active_eda_df)
+                if not corr_matrix.empty:
+                    st.download_button(
+                        label="📥 Download Correlation Matrix (.CSV)",
+                        data=corr_matrix.to_csv().encode('utf-8'),
+                        file_name="kba_correlation_matrix.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                    
+        with tab_box:
+            box_fig = CreditRiskEDA.generate_boxplots_by_target_fig(active_eda_df)
+            if box_fig:
+                st.plotly_chart(box_fig, use_container_width=True)
 
     st.write("---")
 
