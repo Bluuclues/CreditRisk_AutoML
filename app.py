@@ -488,23 +488,62 @@ if st.session_state.training_completed and st.session_state.automl_results is no
 
     st.write("---")
 
-    # --- 4.4 MODEL LEADERBOARD & DIAGNOSTICS ACCORDION ---
-    with st.expander("📊 View Comparative Model Leaderboard (TabFM, LightGBM, XGBoost, CatBoost, Ensembles)"):
-        col_lead1, col_lead2 = st.columns([1, 1])
+    # --- 4.4 MODEL LEADERBOARD & PORTFOLIO SHAP FEATURE IMPORTANCE ---
+    with st.expander("📊 View Comparative Model Leaderboard & Portfolio Feature Importance Graphs", expanded=True):
+        col_lead1, col_lead2 = st.columns([1, 1], gap="medium")
 
         with col_lead1:
-            st.markdown("**Comparative Model Leaderboard**")
+            st.markdown("#### 🏆 Comparative Model Leaderboard")
             if not leaderboard_df.empty:
                 st.dataframe(leaderboard_df, use_container_width=True)
             else:
                 st.write("Leaderboard data unavailable.")
 
         with col_lead2:
-            st.markdown("**Global Feature Importance (TreeSHAP Beeswarm)**")
+            st.markdown("#### 🌟 Portfolio-Wide Feature Importance (SHAP)")
             if explainer is not None:
-                beeswarm_bytes = explainer.generate_beeswarm_plot_bytes()
-                if beeswarm_bytes:
-                    st.image(beeswarm_bytes, use_container_width=True)
+                tab_bar, tab_bee, tab_tbl = st.tabs(["📊 Feature Bar Graph", "🐝 Beeswarm Plot", "📋 Importance Table"])
+                
+                with tab_bar:
+                    plotly_fig = explainer.generate_plotly_feature_bar_fig(top_n=12)
+                    if plotly_fig:
+                        st.plotly_chart(plotly_fig, use_container_width=True)
+                    else:
+                        bar_bytes = explainer.generate_bar_plot_bytes()
+                        if bar_bytes:
+                            st.image(bar_bytes, use_container_width=True)
+                        else:
+                            st.info("Feature importance bar plot unavailable for this model architecture.")
+                    
+                    # Download static high-res SHAP bar plot
+                    bar_bytes = explainer.generate_bar_plot_bytes()
+                    if bar_bytes:
+                        st.download_button(
+                            label="⬇️ Download Portfolio SHAP Bar Graph (.PNG)",
+                            data=bar_bytes,
+                            file_name="portfolio_shap_feature_importance.png",
+                            mime="image/png",
+                            use_container_width=True
+                        )
+
+                with tab_bee:
+                    beeswarm_bytes = explainer.generate_beeswarm_plot_bytes()
+                    if beeswarm_bytes:
+                        st.image(beeswarm_bytes, use_container_width=True)
+                        st.caption("Dots represent individual borrowers. Color denotes feature value (Red = High, Blue = Low). Position on X-axis denotes risk impact.")
+
+                with tab_tbl:
+                    imp_df = explainer.get_global_feature_importance_df(top_n=25)
+                    st.dataframe(imp_df, use_container_width=True)
+                    st.download_button(
+                        label="⬇️ Export Feature Importance Table (.CSV)",
+                        data=imp_df.to_csv(index=False).encode('utf-8'),
+                        file_name="kba_global_feature_importance.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+            else:
+                st.info("Fit TreeSHAP explainer to view portfolio-wide feature attributions.")
 
     # --- 4.5 EXPORT SCORED PORTFOLIO & MLOPS HUB ---
     st.write("")

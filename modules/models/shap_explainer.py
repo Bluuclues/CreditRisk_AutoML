@@ -1,7 +1,8 @@
 """
 shap_explainer.py
-Production TreeSHAP and Adverse Action Reason Code Generator for PyCaret Pipelines.
-Compliant with Python 3.12+, SHAP 0.40+, PyCaret 3.x, and Streamlit Integration.
+Production TreeSHAP and Adverse Action Reason Code Generator for Credit Risk Models.
+Supports individual borrower waterfall decompositions, global beeswarm plots,
+and portfolio-wide SHAP feature importance bar charts (interactive Plotly & PNG).
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -9,13 +10,15 @@ import numpy as np
 import pandas as pd
 import shap
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 import io
 
 
 class CreditRiskExplainer:
     """
-    Computes TreeSHAP attributions and generates customer data cards and adverse action reason codes
-    for models trained via PyCaret.
+    Computes TreeSHAP attributions and generates customer data cards, adverse action reason codes,
+    and portfolio-wide feature importance bar charts.
     """
 
     def __init__(self, pipeline: Any, X_sample: pd.DataFrame):
@@ -39,7 +42,6 @@ class CreditRiskExplainer:
 
             # Extract preprocessing steps if pipeline has multiple stages
             if hasattr(pipeline, "steps") and len(pipeline.steps) > 1:
-                # Preprocessing pipeline consists of all steps prior to the final estimator
                 self.preprocessor = pipeline[:-1]
             elif "preprocessor" in steps:
                 self.preprocessor = steps["preprocessor"]
@@ -157,7 +159,6 @@ class CreditRiskExplainer:
         try:
             fig, ax = plt.subplots(figsize=(8, 4.5))
             
-            # Extract expected base value safely
             expected_val = getattr(self.explainer, "expected_value", 0.0)
             if isinstance(expected_val, (list, np.ndarray)) and len(expected_val) > 1:
                 base_val = expected_val[1]
@@ -166,7 +167,6 @@ class CreditRiskExplainer:
             else:
                 base_val = expected_val
 
-            # Construct SHAP explanation object for waterfall
             exp_obj = shap.Explanation(
                 values=self.shap_values[record_idx],
                 base_values=base_val,
@@ -208,3 +208,93 @@ class CreditRiskExplainer:
         except Exception:
             plt.close('all')
             return None
+
+    def get_global_feature_importance_df(self, top_n: int = 20) -> pd.DataFrame:
+        """
+        Computes portfolio-wide mean absolute SHAP values for every feature.
+        Returns a ranked summary DataFrame.
+        """
+        if self.shap_values is None:
+            return pd.DataFrame(columns=["Rank", "Feature Name", "Feature Code", "Mean Absolute SHAP", "Impact Percentage (%)"])
+
+        mean_abs_shaps = np.mean(np.abs(self.shap_values), axis=0)
+        total_importance = np.sum(mean_abs_shaps)
+
+        sorted_idx = np.argsort(mean_abs_shaps)[::-1][:top_n]
+        
+        rows = []
+        for rank, idx in enumerate(sorted_idx, 1):
+            feat_code = self.clean_feature_names[idx]
+            pretty_name = feat_code.replace("feat_", "").replace("_", " ").title()
+            val = float(mean_abs_shaps[idx])
+            pct = (val / total_importance * 100.0) if total_importance > 0 else 0.0
+            
+            rows.append({
+                "Rank": rank,
+                "Feature Name": pretty_name,
+                "Feature Code": feat_code,
+                "Mean Absolute SHAP": round(val, 4),
+                "Impact Percentage (%)": round(pct, 2)
+            })
+
+        return pd.DataFrame(rows)
+
+    def generate_bar_plot_bytes(self, max_display: int = 12) -> Optional[bytes]:
+        """Generates portfolio-wide static SHAP Feature Importance Bar Plot PNG image buffer."""
+        if self.shap_values is None:
+            return None
+
+        try:
+            fig, ax = plt.subplots(figsize=(8.5, 5))
+            X_df = pd.DataFrame(self.X_transformed, columns=self.clean_feature_names)
+            shap.summary_plot(self.shap_values, X_df, plot_type="bar", max_display=max_display, show=False)
+            plt.title("Portfolio-Wide SHAP Feature Importance (Mean |SHAP Value|)", fontsize=12, fontweight='bold', pad=12)
+            plt.xlabel("Mean |SHAP Value| (Average Impact on Credit Decision)", fontsize=10)
+            plt.tight_layout()
+
+            buf = io.BytesIO()
+            plt.savefig(buf, format="png", dpi=160, bbox_inches="tight")
+            plt.close(fig)
+            buf.seek(0)
+            return buf.getvalue()
+        except Exception:
+            plt.close('all')
+            return None
+
+    def generate_plotly_feature_bar_fig(self, top_n: int = 15) -> Optional[go.Figure]:
+        """Generates an interactive Plotly horizontal bar chart of portfolio SHAP feature importance."""
+        df_imp = self.get_global_feature_importance_df(top_n=top_n)
+        if df_imp.empty:
+            return None
+
+        # Reverse order so highest importance is at the top of the horizontal bar chart
+        df_plot = df_imp.iloc[::-1].copy()
+
+        fig = go.Figure(go.Bar(
+            x=df_plot["Mean Absolute SHAP"],
+            y=df_plot["Feature Name"],
+            orientation='h',
+            marker=dict(
+                color=df_plot["Mean Absolute SHAP"],
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(title="SHAP")
+            ),
+            text=[f"{pct:.1f}% ({val:.3f})" for pct, val in zip(df_plot["Impact Percentage (%)"], df_plot["Mean Absolute SHAP"])],
+            textposition='auto',
+            hovertemplate="<b>%{y}</b><br>Mean |SHAP|: %{x:.4f}<extra></extra>"
+        ))
+
+        fig.update_layout(
+            title=dict(
+                text="<b>Portfolio-Wide Feature Importance (Mean |SHAP Value|)</b>",
+                font=dict(size=14, color="#1e293b")
+            ),
+            xaxis_title="Mean Absolute SHAP Value (Average Impact on Default Probability)",
+            yaxis_title="Predictive Feature",
+            margin=dict(l=20, r=20, t=40, b=30),
+            height=420,
+            template="plotly_white"
+        )
+
+        return fig
