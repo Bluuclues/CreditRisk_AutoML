@@ -1,7 +1,7 @@
 """
 shap_explainer.py
-Production TreeSHAP and Adverse Action Reason Code Generator.
-Compliant with Python 3.12+, SHAP 0.40+, and Streamlit Integration.
+Production TreeSHAP and Adverse Action Reason Code Generator for PyCaret Pipelines.
+Compliant with Python 3.12+, SHAP 0.40+, PyCaret 3.x, and Streamlit Integration.
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -14,42 +14,61 @@ import io
 
 class CreditRiskExplainer:
     """
-    Computes TreeSHAP attributions and generates customer data cards and adverse action reason codes.
+    Computes TreeSHAP attributions and generates customer data cards and adverse action reason codes
+    for models trained via PyCaret.
     """
 
     def __init__(self, pipeline: Any, X_sample: pd.DataFrame):
         self.pipeline = pipeline
         self.X_sample = X_sample.copy()
         
-        # 1. Unpack preprocessor and classifier step if wrapped in scikit-learn Pipeline
+        # 1. Unpack preprocessor and estimator from Pipeline (PyCaret / Scikit-Learn)
         self.preprocessor = None
         self.classifier = pipeline
         
         if hasattr(pipeline, "named_steps"):
-            if "preprocessor" in pipeline.named_steps:
-                self.preprocessor = pipeline.named_steps["preprocessor"]
-            if "classifier" in pipeline.named_steps:
-                self.classifier = pipeline.named_steps["classifier"]
-            elif "trained_model" in pipeline.named_steps:
-                self.classifier = pipeline.named_steps["trained_model"]
+            steps = pipeline.named_steps
+            if "actual_estimator" in steps:
+                self.classifier = steps["actual_estimator"]
+            elif "trained_model" in steps:
+                self.classifier = steps["trained_model"]
+            elif "classifier" in steps:
+                self.classifier = steps["classifier"]
+            elif hasattr(pipeline, "steps") and len(pipeline.steps) > 0:
+                self.classifier = pipeline.steps[-1][1]
+
+            # Extract preprocessing steps if pipeline has multiple stages
+            if hasattr(pipeline, "steps") and len(pipeline.steps) > 1:
+                # Preprocessing pipeline consists of all steps prior to the final estimator
+                self.preprocessor = pipeline[:-1]
+            elif "preprocessor" in steps:
+                self.preprocessor = steps["preprocessor"]
 
         # 2. Transform features
         if self.preprocessor is not None:
-            self.X_transformed = self.preprocessor.transform(self.X_sample)
-            if hasattr(self.X_transformed, "toarray"):
-                self.X_transformed = self.X_transformed.toarray()
-            
             try:
-                self.feature_names = list(self.preprocessor.get_feature_names_out())
+                self.X_transformed = self.preprocessor.transform(self.X_sample)
+                if hasattr(self.X_transformed, "toarray"):
+                    self.X_transformed = self.X_transformed.toarray()
+                
+                try:
+                    if hasattr(self.preprocessor, "get_feature_names_out"):
+                        self.feature_names = list(self.preprocessor.get_feature_names_out())
+                    else:
+                        self.feature_names = list(self.X_sample.columns)
+                except Exception:
+                    self.feature_names = [f"feat_{i}" for i in range(self.X_transformed.shape[1])]
             except Exception:
-                self.feature_names = [f"feat_{i}" for i in range(self.X_transformed.shape[1])]
+                self.X_transformed = self.X_sample.values
+                self.feature_names = list(self.X_sample.columns)
         else:
             self.X_transformed = self.X_sample.values
             self.feature_names = list(self.X_sample.columns)
 
-        # Clean feature names for display (strip num__ or cat__)
+        # Clean feature names for display
         self.clean_feature_names = [
-            f.replace("num__", "").replace("cat__", "") for f in self.feature_names
+            str(f).replace("num__", "").replace("cat__", "").replace("remainder__", "") 
+            for f in self.feature_names
         ]
 
         # 3. Fit SHAP Explainer
@@ -91,7 +110,6 @@ class CreditRiskExplainer:
         pos_indices = np.where(row_shaps > 0)[0]
 
         if len(pos_indices) == 0:
-            # Low risk case
             return [{
                 "feature_name": "Low Risk Baseline",
                 "feature_value": "Optimal",
@@ -139,10 +157,19 @@ class CreditRiskExplainer:
         try:
             fig, ax = plt.subplots(figsize=(8, 4.5))
             
+            # Extract expected base value safely
+            expected_val = getattr(self.explainer, "expected_value", 0.0)
+            if isinstance(expected_val, (list, np.ndarray)) and len(expected_val) > 1:
+                base_val = expected_val[1]
+            elif isinstance(expected_val, (list, np.ndarray)) and len(expected_val) == 1:
+                base_val = expected_val[0]
+            else:
+                base_val = expected_val
+
             # Construct SHAP explanation object for waterfall
             exp_obj = shap.Explanation(
                 values=self.shap_values[record_idx],
-                base_values=getattr(self.explainer, "expected_value", 0.0) if not isinstance(getattr(self.explainer, "expected_value", 0.0), list) else getattr(self.explainer, "expected_value", [0.0])[1],
+                base_values=base_val,
                 data=self.X_transformed[record_idx],
                 feature_names=self.clean_feature_names
             )
