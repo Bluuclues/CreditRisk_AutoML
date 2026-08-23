@@ -1,17 +1,10 @@
 pycaret>=3.3.0
 streamlit
 duckdb
-pandas
-scikit-learn
 shap
 matplotlib
 seaborn
 plotly
 streamlit_elements
 openpyxl
-xgboost
-lightgbm
-catboost
-optuna
 kaleido
-numpy
