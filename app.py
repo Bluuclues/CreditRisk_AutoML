@@ -230,10 +230,10 @@ if st.session_state.data_ingested:
 
 
 # ==============================================================================
-# SECTION 3: PYCARET AUTOML ENGINE & DISPATCHER
+# SECTION 3: TABFM & PYCARET AUTOML ENGINE & DISPATCHER
 # ==============================================================================
 if st.session_state.layers_applied:
-    st.subheader("🤖 3. PyCaret AutoML Engine & Dispatcher")
+    st.subheader("🤖 3. TabFM & PyCaret AutoML Engine")
 
     col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
 
@@ -243,13 +243,13 @@ if st.session_state.layers_applied:
         optimize_metric = st.selectbox("Optimization Metric:", ["PR-AUC", "ROC-AUC", "F1", "Accuracy"], index=0)
 
     with col_cfg2:
-        st.markdown("**Hyperparameter Tuning**")
+        st.markdown("**Hyperparameter Tuning & Ensembling**")
         tune_toggle = st.checkbox("Enable Automated Optuna Hyperparameter Tuning", value=True)
-        ensemble_toggle = st.checkbox("Construct Soft-Voting GBDT Ensemble", value=True)
+        ensemble_toggle = st.checkbox("Construct Soft-Voting GBDT & TabFM Ensemble", value=True)
 
     with col_cfg3:
         st.markdown("**Engine Execution**")
-        if st.button("🚀 Run PyCaret AutoML Pipeline", type="primary", use_container_width=True):
+        if st.button("🚀 Run TabFM & AutoML Pipeline", type="primary", use_container_width=True):
             progress_bar = st.progress(0)
             status_text = st.empty()
 
@@ -257,7 +257,7 @@ if st.session_state.layers_applied:
                 progress_bar.progress(pct)
                 status_text.markdown(f"**Status:** {msg}")
 
-            with st.spinner("Training PyCaret candidate models..."):
+            with st.spinner("Benchmarking TabFM, LightGBM, XGBoost, CatBoost & candidate models..."):
                 results = run_automl_pipeline(
                     st.session_state.final_layered_df,
                     optimize_metric=optimize_metric,
@@ -455,11 +455,11 @@ if st.session_state.training_completed and st.session_state.automl_results is no
     st.write("---")
 
     # --- 4.4 MODEL LEADERBOARD & DIAGNOSTICS ACCORDION ---
-    with st.expander("📊 View PyCaret Comparative Model Leaderboard & Diagnostics"):
+    with st.expander("📊 View Comparative Model Leaderboard (TabFM, LightGBM, XGBoost, CatBoost, Ensembles)"):
         col_lead1, col_lead2 = st.columns([1, 1])
 
         with col_lead1:
-            st.markdown("**PyCaret Model Leaderboard**")
+            st.markdown("**Comparative Model Leaderboard**")
             if not leaderboard_df.empty:
                 st.dataframe(leaderboard_df, use_container_width=True)
             else:
