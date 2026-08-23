@@ -482,3 +482,61 @@ class CreditRiskAutoMLEngine:
             return self.champion_model.predict(X_new)
 
         return np.zeros(len(X_new))
+
+    def export_pipeline_bytes(self) -> bytes:
+        """Serializes the champion model pipeline into pickle bytes for offline deployment."""
+        if self.champion_model is None:
+            raise ValueError("No champion model available to export.")
+        import pickle
+        return pickle.dumps(self.champion_model)
+
+    def generate_inference_script(self) -> str:
+        """Generates a standalone, ready-to-run Python inference script for data scientists."""
+        return '''"""
+infer_credit_model.py
+Production Scoring Script for KBA Credit Risk Champion Pipeline.
+Generated automatically by KBA Credit Risk AutoML Engine.
+"""
+
+import pickle
+import pandas as pd
+import numpy as np
+
+def score_new_portfolio(csv_filepath: str, model_filepath: str = "champion_pipeline.pkl") -> pd.DataFrame:
+    # 1. Load trained pipeline (preprocessing + estimator)
+    with open(model_filepath, "rb") as f:
+        pipeline = pickle.load(f)
+
+    # 2. Ingest unlabelled loan data
+    df = pd.read_csv(csv_filepath)
+
+    # 3. Clean identifier / leakage metadata
+    drop_cols = ["session_id", "borrower_id", "loan_no", "loan_date", "due_date", "payoff_date", "country_code", "default_flag"]
+    X_features = df.drop(columns=[c for c in drop_cols if c in df.columns], errors="ignore")
+
+    # 4. Generate Probability of Default (PD)
+    if hasattr(pipeline, "predict_proba"):
+        probs = pipeline.predict_proba(X_features)[:, 1]
+    else:
+        probs = pipeline.predict(X_features)
+
+    df["predicted_pd_pct"] = np.round(probs * 100.0, 2)
+    df["risk_tier"] = np.where(
+        probs >= 0.60, "High Risk (PD >= 60%)",
+        np.where(probs >= 0.30, "Medium Risk (30% <= PD < 60%)", "Low Risk (PD < 30%)")
+    )
+    
+    # Calculate recommended credit limit (conservative risk scaling)
+    if "amount" in df.columns:
+        df["recommended_credit_limit_kes"] = np.maximum(10000, (df["amount"] * (1.0 - probs)).astype(int))
+
+    return df
+
+if __name__ == "__main__":
+    import sys
+    input_csv = sys.argv[1] if len(sys.argv) > 1 else "new_borrowers.csv"
+    scored_df = score_new_portfolio(input_csv)
+    output_csv = "scored_output.csv"
+    scored_df.to_csv(output_csv, index=False)
+    print(f"Scored {len(scored_df):,} records successfully -> saved to {output_csv}")
+'''

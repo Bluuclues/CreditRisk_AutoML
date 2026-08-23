@@ -1,13 +1,14 @@
 """
 feature_store.py
 DuckDB In-Memory Analytical Warehouse & Feature Store Connector.
-Manages metadata tag catalogs, dynamic SQL macro layering, and DB housekeeping.
+Manages metadata tag catalogs, dynamic SQL macro layering, and data artifact export.
 """
 
 import sqlite3
 import duckdb
 import pandas as pd
 import os
+import io
 from typing import List, Optional
 
 
@@ -68,6 +69,18 @@ def apply_macro_layers(duck_conn: duckdb.DuckDBPyConnection, selected_layers: Li
     """)
 
     return duck_conn.execute("SELECT * FROM ml_features").df()
+
+
+def export_parquet_bytes(df: pd.DataFrame) -> bytes:
+    """Exports in-memory DataFrame to high-performance Parquet bytes with Snappy compression."""
+    buf = io.BytesIO()
+    df.to_parquet(buf, index=False, engine='pyarrow' if 'pyarrow' in globals() else 'auto')
+    return buf.getvalue()
+
+
+def export_csv_bytes(df: pd.DataFrame) -> bytes:
+    """Exports in-memory DataFrame to UTF-8 CSV bytes."""
+    return df.to_csv(index=False).encode('utf-8')
 
 
 def export_parquet_snapshot(duck_conn: duckdb.DuckDBPyConnection, output_filepath: str) -> bool:

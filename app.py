@@ -13,7 +13,7 @@ import streamlit.components.v1 as components
 
 # Import custom backend modules
 from modules.data_validator import CreditRiskDataValidator
-from modules.feature_store import apply_macro_layers, export_parquet_snapshot
+from modules.feature_store import apply_macro_layers, export_parquet_snapshot, export_parquet_bytes, export_csv_bytes
 from modules.models.dispatcher import run_automl_pipeline
 from modules.models.shap_explainer import CreditRiskExplainer
 
@@ -171,14 +171,25 @@ with right_col:
 
     else:
         st.success(f"✅ Ingested {len(st.session_state.primary_df):,} records into active DuckDB memory store!")
-        if st.button("🔄 Reset Portfolio & Upload New CSV"):
-            st.session_state.data_ingested = False
-            st.session_state.layers_applied = False
-            st.session_state.training_completed = False
-            st.session_state.primary_df = None
-            st.session_state.final_layered_df = None
-            st.session_state.automl_results = None
-            st.rerun()
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button("🔄 Reset Portfolio & Upload New CSV", use_container_width=True):
+                st.session_state.data_ingested = False
+                st.session_state.layers_applied = False
+                st.session_state.training_completed = False
+                st.session_state.primary_df = None
+                st.session_state.final_layered_df = None
+                st.session_state.automl_results = None
+                st.rerun()
+        with col_btn2:
+            baseline_csv = st.session_state.primary_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Export Clean Ingested Baseline (.CSV)",
+                data=baseline_csv,
+                file_name="kba_ingested_baseline.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
 st.write("---")
 
@@ -223,8 +234,31 @@ if st.session_state.data_ingested:
 
     if st.session_state.layers_applied:
         st.info(f"📊 Analytical Feature Store: **{st.session_state.final_layered_df.shape[1]} Total Features** Ready for AutoML Dispatcher")
-        with st.expander("Preview Merged Analytical Feature Store (First 3 Rows)"):
+        
+        with st.expander("🔍 Preview Merged Feature Store & Data Science Exports"):
             st.dataframe(st.session_state.final_layered_df.head(3), use_container_width=True)
+            col_exp_fs1, col_exp_fs2 = st.columns(2)
+            with col_exp_fs1:
+                fs_csv = export_csv_bytes(st.session_state.final_layered_df)
+                st.download_button(
+                    label="📥 Export Feature Store (.CSV)",
+                    data=fs_csv,
+                    file_name="kba_feature_store_snapshot.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            with col_exp_fs2:
+                try:
+                    fs_parquet = export_parquet_bytes(st.session_state.final_layered_df)
+                    st.download_button(
+                        label="📦 Export Feature Store (.Parquet)",
+                        data=fs_parquet,
+                        file_name="kba_feature_store_snapshot.parquet",
+                        mime="application/octet-stream",
+                        use_container_width=True
+                    )
+                except Exception:
+                    st.caption("Parquet export engine (pyarrow) optional")
 
     st.write("---")
 
@@ -472,18 +506,27 @@ if st.session_state.training_completed and st.session_state.automl_results is no
                 if beeswarm_bytes:
                     st.image(beeswarm_bytes, use_container_width=True)
 
-    # --- 4.5 EXPORT SCORED PORTFOLIO ---
+    # --- 4.5 EXPORT SCORED PORTFOLIO & MLOPS HUB ---
     st.write("")
+    st.markdown("### 📥 Portfolio Decisions & Artifacts Export")
+
+    # Business Analyst Quick Plug-and-Play Exports
     col_exp1, col_exp2 = st.columns(2)
     with col_exp1:
         scored_df = df.copy()
-        scored_df["predicted_pd_pct"] = probs * 100.0
+        scored_df["predicted_pd_pct"] = np.round(probs * 100.0, 2)
+        scored_df["risk_tier"] = np.where(
+            probs >= 0.60, "High Risk",
+            np.where(probs >= 0.30, "Medium Risk", "Low Risk")
+        )
         csv_bytes = scored_df.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Export Scored Portfolio as CSV",
+            label="📥 Export Scored Portfolio as CSV (Plug & Play)",
             data=csv_bytes,
             file_name="kba_scored_portfolio.csv",
-            mime="text/csv"
+            mime="text/csv",
+            type="primary",
+            use_container_width=True
         )
 
     with col_exp2:
@@ -491,8 +534,86 @@ if st.session_state.training_completed and st.session_state.automl_results is no
         with pd.ExcelWriter(buf, engine='openpyxl') as writer:
             scored_df.to_excel(writer, index=False, sheet_name='Scored_Portfolio')
         st.download_button(
-            label="📥 Export Scored Portfolio as Excel",
+            label="📥 Export Scored Portfolio as Excel (.xlsx)",
             data=buf.getvalue(),
             file_name="kba_scored_portfolio.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
         )
+
+    # Data Scientist & ML Engineer Artifacts Hub
+    with st.expander("🛠️ Data Scientist & MLOps Artifacts Export Hub (Pipelines, Scripts & Feature Stores)"):
+        st.markdown("""
+        **Modular MLOps Artifacts:**  
+        Export production-ready model pipelines, scoring recipes, and feature snapshots for offline fine-tuning, Optuna searches, or CI/CD model serving.
+        """)
+
+        engine = results.get("engine", None)
+        champion_model = results.get("champion_model", None)
+
+        col_ds1, col_ds2, col_ds3 = st.columns(3)
+
+        with col_ds1:
+            st.markdown("**1. Trained Model Pipeline**")
+            st.caption("Fitted preprocessing + classifier artifact (.pkl)")
+            if engine is not None and hasattr(engine, "export_pipeline_bytes"):
+                try:
+                    pkl_bytes = engine.export_pipeline_bytes()
+                except Exception:
+                    import pickle
+                    pkl_bytes = pickle.dumps(champion_model)
+            else:
+                import pickle
+                pkl_bytes = pickle.dumps(champion_model)
+
+            st.download_button(
+                label="💾 Download Champion Pipeline (.pkl)",
+                data=pkl_bytes,
+                file_name="champion_pipeline.pkl",
+                mime="application/octet-stream",
+                use_container_width=True
+            )
+
+        with col_ds2:
+            st.markdown("**2. Python Scoring Script**")
+            st.caption("Standalone offline inference recipe (.py)")
+            if engine is not None and hasattr(engine, "generate_inference_script"):
+                py_script = engine.generate_inference_script()
+            else:
+                py_script = "# Standalone inference script\nimport pickle, pandas as pd\n"
+
+            st.download_button(
+                label="📄 Download Inference Code (.py)",
+                data=py_script.encode('utf-8'),
+                file_name="infer_credit_model.py",
+                mime="text/x-python",
+                use_container_width=True
+            )
+
+        with col_ds3:
+            st.markdown("**3. Benchmark Leaderboard**")
+            st.caption("Detailed multi-model CV metrics (.csv)")
+            leaderboard_csv = leaderboard_df.to_csv(index=False).encode('utf-8') if not leaderboard_df.empty else b""
+            st.download_button(
+                label="📊 Download Leaderboard (.csv)",
+                data=leaderboard_csv,
+                file_name="automl_leaderboard_benchmark.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+        st.markdown("**Python Scoring Recipe (Copy & Paste):**")
+        st.code("""
+import pickle
+import pandas as pd
+
+# 1. Load trained Champion Pipeline
+with open("champion_pipeline.pkl", "rb") as f:
+    pipeline = pickle.load(f)
+
+# 2. Score incoming borrower records
+new_loans = pd.read_csv("new_borrowers.csv")
+pd_scores = pipeline.predict_proba(new_loans)[:, 1]
+new_loans["predicted_pd"] = pd_scores
+print(new_loans[["borrower_id", "predicted_pd"]].head())
+        """, language="python")
