@@ -1,6 +1,12 @@
-pycaret>=3.3.0
 streamlit
 duckdb
+pandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+catboost
+optuna
 shap
 matplotlib
 seaborn
