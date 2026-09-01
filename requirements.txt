@@ -1,9 +1,10 @@
-streamlit
+streamlit>=1.35.0
+pycaret>=3.0.0
+pandas<2.2.0
+numpy<2.0.0
+scipy<1.13.0
+scikit-learn<1.5.0
 duckdb
-pycaret
-pandas
-numpy
-scikit-learn
 xgboost
 lightgbm
 catboost
@@ -12,6 +13,4 @@ shap
 matplotlib
 seaborn
 plotly
-streamlit_elements
 openpyxl
-kaleido
