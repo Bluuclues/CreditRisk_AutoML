@@ -86,24 +86,32 @@ The application is engineered for high-availability, containerized execution on 
 To assess thin-file and informal sector borrowers (MSMEs, gig workers, unbanked agriculturalists) who lack formal credit bureau (CRB) histories, the methodology integrates multi-source alternative data feeds.
 
 ```
-                               Alternative Data Intelligence
-                                            │
-        ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
-        ▼                   ▼                               ▼                   ▼
-[Macroeconomic GCP]   [Mobile Money (M-Pesa)]     [Geospatial Satellite]   [Digital Footprint]
-• County Real GCP     • 30d/90d Inflow Velocity   • Sentinel-2 NDVI        • Device Telemetry
-• KNBS Inflation      • Fuliza Overdraft Rate     • CHIRPS Rainfall        • Airtime Cadence
-• CBK Base Lending    • Merchant Till Turnover    • Drought Anomalies      • Utility Paybills
+                                Alternative Data Intelligence
+                                             │
+         ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
+         ▼                   ▼                               ▼                   ▼
+ [Macro & Fiscal Policy] [High-Frequency Behavioral]    [Commodity & Logistics]  [Geospatial & Poverty]
+ • Gross County Product  • Google Trends Distress Index • KAMIS Food Volatility  • OSM Commercial POIs
+ • Dynamic Tax Movements • M-Pesa Inflow Velocity       • EPRA Monthly Fuel Caps • KNBS County MPI
+ • CBK CBR & Spreads     • Fuliza Overdraft Rate        • Sentinel-2 Crop NDVI   • Multidimensional Depr.
 ```
 
 ### 3.1 Alternative Data Taxonomy & Extraction Channels
 
-| Alternative Data Category | Extracted Signals | Extraction Mechanism | Actuarial Risk Rationale |
-| :--- | :--- | :--- | :--- |
-| **Macro & County Indicators** | County Real GCP Growth, KNBS CPI Inflation, Central Bank Base Lending Rate (CBR). | Pre-compiled SQLite database (`macro_layer.db`) joined via `country_code` and temporal `year`. | Macroeconomic stress and regional county GDP contractions directly diminish MSME debt service capacity. |
-| **Mobile Money Cash Flows** | M-Pesa 30d/90d inflow velocity ratio, Fuliza overdraft utilization %, Lipa Na M-Pesa turnover. | Consented statement parsing (Daraja API / M-Pesa PDF statements). | High inflow velocity signals expanding working capital; chronic >80% Fuliza utilization indicates severe liquidity distress. |
-| **Geospatial Satellite Imagery** | Sentinel-2 Normalized Difference Vegetation Index (NDVI), CHIRPS rainfall precipitation anomaly. | Google Earth Engine / Copernicus API spatial county mapping. | Severe vegetative NDVI drops and drought anomalies accurately forecast agrarian loan defaults 60 days before onset. |
-| **Airtime & Utility Cadence** | Airtime top-up frequency, denomination volatility, KPLC prepaid electricity token consistency. | Utility Paybill statements (KPLC 888880 / 888888) & Telco CDR. | Stable recurring electricity token purchases reflect household budgeting discipline; erratic micro-top-ups reflect income volatility. |
+The platform systematically indexes and tracks **9 multi-source alternative data indicators** spanning macroeconomic, high-frequency digital, commodity, and geospatial dimensions without relying on paid commercial social media APIs:
+
+| Variable | Category | Collection Method & Endpoint | Update Cadence | Reference & Data Authority | Actuarial Risk Rationale |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Gross County Product (GCP) & Per Capita GDP** | Macroeconomic & County Output | API via OpenData Platform (`https://kenya.opendataforafrica.org/ivpwyob/gdp-expenditure`) | Annual (KNBS GCP Cycles) | [Kenya OpenData / KNBS](https://kenya.opendataforafrica.org/ivpwyob/gdp-expenditure) | County-level economic contractions directly erode MSME cash flow and debt service capacity. |
+| **Google Trends Financial Distress Search Index** | High-Frequency Behavioral | Google Trends API (`pytrends` Python library) targeting distress keywords | Rolling Weekly / Monthly | Google Trends Behavioral Telemetry | Spikes in regional searches for debt collection, auctioneers, and loan penalties signal early-stage distress. |
+| **KAMIS Wholesale Staple Food Price Volatility** | Commodity & Food Security | Scraping & API via Kenya Agricultural Market Information System (`https://kamis.kilimo.go.ke/`) | Weekly Market Bulletins | [Ministry of Agriculture (KAMIS)](https://kamis.kilimo.go.ke/) | Volatility in staple food prices reduces disposable household income and increases food-budget default pressure. |
+| **Dynamic Tax Movements** | Fiscal & Statutory Environment | KRA Gazette Notices & Finance Act Statutory Tracker | Gazette / Fiscal Amendments | Kenya Revenue Authority (KRA) & National Treasury | Statutory VAT, withholding, and turnover tax rate adjustments alter informal merchant profit margins. |
+| **EPRA Monthly Fuel & Transport Tariff Changes** | Energy & Transport Costs | Scraping EPRA Monthly Public Price Press Releases (`https://www.epra.go.ke/`) | 14th of Every Month | [EPRA Kenya](https://www.epra.go.ke/) | Fuel price surges immediately inflate logistics and commuter costs, squeezing informal sector operating margins. |
+| **OpenStreetMap (OSM) Commercial POI Density** | Geospatial & Retail Activity | Overpass API & OSM Geofabrik Extracts (`https://overpass-turbo.eu/`) | Quarterly Spatial Sync | [OpenStreetMap Contributors](https://overpass-turbo.eu/) | High concentration of retail shops, bank agents, and transit nodes correlates with sustained commercial footfall. |
+| **KNBS County Multidimensional Poverty Index (MPI)** | Socio-Economic Deprivation | KNBS MPI Survey Reports & Data Scraping (`https://www.knbs.or.ke/`) | Periodic Survey Releases | [Kenya National Bureau of Statistics (KNBS)](https://www.knbs.or.ke/) | Multidimensional deprivation in health, education, and living standards reflects baseline structural vulnerability. |
+| **Central Bank Rate (CBR) & Interbank Rate Spread** | Monetary & Liquidity Benchmark | Central Bank of Kenya Weekly/Monthly Bulletins (`https://www.centralbank.go.ke/`) | MPC Cycle / Monthly | [Central Bank of Kenya (CBK)](https://www.centralbank.go.ke/) | Tightening benchmark interest rates and widening interbank spreads elevate borrowing costs and system risk. |
+| **M-Pesa Transaction Volume & Velocity** | Mobile Money Cash Flows | Safaricom Daraja API / Consented M-Pesa Statement Parsing | Real-time / 30d-90d Rolling | Safaricom Daraja API & Mobile Statements | Inflow velocity signals active working capital turnover; chronic >80% Fuliza utilization flags acute liquidity stress. |
+
 
 ---
 

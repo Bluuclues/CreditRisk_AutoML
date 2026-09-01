@@ -1,5 +1,6 @@
 streamlit
 duckdb
+pycaret
 pandas
 numpy
 scikit-learn

@@ -11,8 +11,8 @@ import pandas as pd
 import numpy as np
 
 # Core ML and GBDT dependencies
-from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator, ClassifierMixin, clone
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -20,7 +20,10 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, VotingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, average_precision_score
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, average_precision_score
+)
 
 try:
     from tabpfn import TabPFNClassifier
@@ -56,6 +59,10 @@ except Exception:
     PYCARET_AVAILABLE = False
 
 
+def _reconstruct_tabfm(cls):
+    return cls.__new__(cls)
+
+
 class TabFMClassifier(BaseEstimator, ClassifierMixin):
     """
     Tabular Foundation Model (TabFM) Classifier.
@@ -80,6 +87,13 @@ class TabFMClassifier(BaseEstimator, ClassifierMixin):
         self.random_state = random_state
         self.model = None
         self.classes_ = None
+
+    def __reduce__(self):
+        import sys
+        mod = sys.modules.get("modules.models.pycaret_engine")
+        cls = getattr(mod, "TabFMClassifier", TabFMClassifier) if mod else TabFMClassifier
+        state = dict(self.__dict__)
+        return (_reconstruct_tabfm, (cls,), state)
 
     def fit(self, X, y):
         self.classes_ = np.unique(y)
@@ -135,7 +149,7 @@ class AutoMLConfig:
     task_type: str = "auto"  # 'auto', 'classification', 'regression'
     cv_folds: int = 5
     optimize_metric: str = "PR-AUC"  # 'PR-AUC', 'ROC-AUC', 'AUC', 'F1', 'Accuracy', 'Recall', 'Precision'
-    top_n_models: int = 3
+    top_n_models: int = 5
     tune_hyperparameters: bool = True
     create_ensemble: bool = True
     session_id: int = 42
@@ -201,7 +215,15 @@ class CreditRiskAutoMLEngine:
         # Execute PyCaret if available, otherwise native GBDT & TabFM AutoML engine
         if self.is_pycaret_active:
             try:
-                return self._run_pycaret(data, progress_callback)
+                result = self._run_pycaret(data, progress_callback)
+                if self._leaderboard_is_valid(result.get("leaderboard")):
+                    return result
+                if progress_callback:
+                    progress_callback(
+                        30,
+                        "PyCaret produced an invalid leaderboard; rebuilding with the native GBDT/TabFM engine..."
+                    )
+                self.is_pycaret_active = False
             except Exception as e:
                 if progress_callback:
                     progress_callback(30, f"PyCaret execution note: {e}. Switching to native GBDT/TabFM engine...")
@@ -248,7 +270,14 @@ class CreditRiskAutoMLEngine:
             if not isinstance(self.best_models, list):
                 self.best_models = [self.best_models]
 
-            self.leaderboard = self.exp.pull()
+            # Build a clean, honest leaderboard from the PyCaret-selected models.
+            # We never trust PyCaret's internal display grid (`pull()`), which can
+            # render model names as "1" and break the comparative leaderboard.
+            X_leaderboard = data.drop(columns=[self.config.target_col])
+            y_leaderboard = data[self.config.target_col].astype(int)
+            self.leaderboard, self.best_models = self._build_cv_leaderboard(
+                self.best_models, X_leaderboard, y_leaderboard
+            )
             selected_model = self.best_models[0]
 
             if self.config.tune_hyperparameters and self.best_models:
@@ -281,7 +310,7 @@ class CreditRiskAutoMLEngine:
             if self.config.create_ensemble and len(self.best_models) >= 2:
                 self.champion_name = f"PyCaret Soft-Voting Blend ({len(self.best_models)} Estimators)"
             else:
-                self.champion_name = str(getattr(selected_model, '__class__', type(selected_model)).__name__)
+                self.champion_name = self._model_display_name(selected_model)
 
             self.champion_model = self.exp.finalize_model(selected_model)
 
@@ -323,6 +352,169 @@ class CreditRiskAutoMLEngine:
             "engine_name": "PyCaret 3.x"
         }
 
+    @staticmethod
+    def _model_display_name(model: Any, idx: int = 0) -> str:
+        """Maps a fitted estimator to a human-readable leaderboard label."""
+        try:
+            name = model.__class__.__name__
+        except Exception:
+            name = f"Model {idx + 1}"
+
+        mapping = {
+            "LGBMClassifier": "LightGBM",
+            "XGBClassifier": "XGBoost",
+            "CatBoostClassifier": "CatBoost",
+            "RandomForestClassifier": "Random Forest",
+            "ExtraTreesClassifier": "Extra Trees",
+            "LogisticRegression": "Logistic Regression",
+            "DecisionTreeClassifier": "Decision Tree",
+            "GradientBoostingClassifier": "Gradient Boosting",
+            "AdaBoostClassifier": "AdaBoost",
+            "MLPClassifier": "Neural Network (MLP)",
+            "KNeighborsClassifier": "K-Nearest Neighbors",
+            "SVC": "Support Vector Machine",
+            "GaussianNB": "Naive Bayes",
+            "QuadraticDiscriminantAnalysis": "QDA",
+            "LinearDiscriminantAnalysis": "LDA",
+            "RidgeClassifier": "Ridge Classifier",
+            "DummyClassifier": "Dummy Classifier",
+            "VotingClassifier": "Soft-Voting Ensemble",
+            "TabFMClassifier": "TabFM (Tabular Foundation Model)",
+            "Pipeline": "Pipeline Ensemble",
+        }
+        return mapping.get(name, name)
+
+    def _build_preprocessor(self, X: pd.DataFrame) -> ColumnTransformer:
+        """Builds the standard numeric/categorical preprocessing pipeline."""
+        num_cols = X.select_dtypes(include=['int64', 'float64', 'int32', 'float32']).columns.tolist()
+        cat_cols = X.select_dtypes(include=['object', 'category', 'string']).columns.tolist()
+
+        num_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+        ])
+        cat_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+        ])
+
+        return ColumnTransformer(
+            transformers=[
+                ('num', num_transformer, num_cols),
+                ('cat', cat_transformer, cat_cols)
+            ]
+        )
+
+    def _evaluate_model_cv(self, model: Any, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+        """Honest stratified cross-validation metrics for a single candidate model."""
+        min_class = int(y.value_counts().min()) if len(y) > 0 else 0
+        n_splits = min(self.config.cv_folds, max(2, min_class)) if min_class >= 2 else 2
+
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=self.config.session_id)
+        try:
+            folds = list(skf.split(X, y))
+        except Exception:
+            from sklearn.model_selection import KFold
+            folds = list(KFold(n_splits=n_splits, shuffle=True, random_state=self.config.session_id).split(X))
+
+        y_true_parts, y_prob_parts, y_pred_parts = [], [], []
+        for tr_idx, te_idx in folds:
+            X_tr, X_te = X.iloc[tr_idx], X.iloc[te_idx]
+            y_tr = y.iloc[tr_idx]
+            try:
+                pre = clone(self._build_preprocessor(X))
+                pipe = Pipeline(steps=[('preprocessor', pre), ('classifier', clone(model))])
+                pipe.fit(X_tr, y_tr)
+                if hasattr(pipe, "predict_proba"):
+                    p = pipe.predict_proba(X_te)[:, 1]
+                else:
+                    p = pipe.predict(X_te).astype(float)
+            except Exception:
+                continue
+
+            y_true_parts.append(np.asarray(y.iloc[te_idx], dtype=int))
+            y_prob_parts.append(np.asarray(p, dtype=float))
+            y_pred_parts.append((np.asarray(p, dtype=float) >= 0.5).astype(int))
+
+        empty_metrics = {
+            "ROC-AUC": 0.0, "PR-AUC": 0.0, "Accuracy": 0.0,
+            "Precision": 0.0, "Recall": 0.0, "F1": 0.0
+        }
+        if not y_true_parts:
+            return empty_metrics
+
+        y_true = np.concatenate(y_true_parts)
+        y_prob = np.concatenate(y_prob_parts)
+        y_pred = np.concatenate(y_pred_parts)
+
+        if len(np.unique(y_true)) <= 1:
+            return {
+                "ROC-AUC": 0.0, "PR-AUC": 0.0,
+                "Accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
+                "Precision": 0.0, "Recall": 0.0, "F1": 0.0
+            }
+
+        return {
+            "ROC-AUC": round(float(roc_auc_score(y_true, y_prob)), 4),
+            "PR-AUC": round(float(average_precision_score(y_true, y_prob)), 4),
+            "Accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
+            "Precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
+            "Recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 4),
+            "F1": round(float(f1_score(y_true, y_pred, zero_division=0)), 4),
+        }
+
+    def _build_cv_leaderboard(self, models: List[Any], X: pd.DataFrame, y: pd.Series):
+        """Builds a canonical, differentiated leaderboard from a list of fitted models."""
+        rows = []
+        for i, model in enumerate(models):
+            metrics = self._evaluate_model_cv(model, X, y)
+            metrics["Model"] = self._model_display_name(model, i)
+            rows.append(metrics)
+
+        if not rows:
+            return pd.DataFrame(), []
+
+        lb = pd.DataFrame(rows)
+
+        sort_map = {
+            "PR-AUC": "PR-AUC",
+            "ROC-AUC": "ROC-AUC",
+            "AUC": "ROC-AUC",
+            "F1": "F1",
+            "Accuracy": "Accuracy",
+            "Recall": "Recall",
+            "Precision": "Precision",
+        }
+        sort_col = sort_map.get(self.config.optimize_metric, "ROC-AUC")
+        if sort_col not in lb.columns:
+            sort_col = "ROC-AUC"
+
+        order = lb[sort_col].astype(float).sort_values(ascending=False).index.tolist()
+        lb_sorted = lb.loc[order].reset_index(drop=True)
+        models_sorted = [models[i] for i in order]
+
+        column_order = ["Model", "ROC-AUC", "PR-AUC", "Accuracy", "Precision", "Recall", "F1"]
+        lb_sorted = lb_sorted[[c for c in column_order if c in lb_sorted.columns]]
+        return lb_sorted, models_sorted
+
+    @staticmethod
+    def _leaderboard_is_valid(lb: Optional[pd.DataFrame]) -> bool:
+        """True when a leaderboard has real, distinct model names and non-degenerate metrics."""
+        if lb is None or not isinstance(lb, pd.DataFrame) or lb.empty:
+            return False
+        if "Model" not in lb.columns:
+            return False
+        names = lb["Model"].astype(str).str.strip()
+        if names.nunique() < 2:
+            return False
+        numeric_cols = lb.select_dtypes(include=[np.number]).columns.tolist()
+        if not numeric_cols:
+            return False
+        for col in numeric_cols:
+            if lb[col].dropna().nunique() >= 2:
+                return True
+        return False
+
     def _run_gbdt_automl(self, data: pd.DataFrame, progress_callback: Optional[callable]) -> Dict[str, Any]:
         """High-Performance AutoML Engine featuring TabFM, LightGBM, XGBoost, CatBoost, and Ensembles."""
         if progress_callback:
@@ -331,25 +523,7 @@ class CreditRiskAutoMLEngine:
         X = data.drop(columns=[self.config.target_col])
         y = data[self.config.target_col].astype(int)
 
-        num_cols = X.select_dtypes(include=['int64', 'float64', 'int32', 'float32']).columns.tolist()
-        cat_cols = X.select_dtypes(include=['object', 'category', 'string']).columns.tolist()
-
-        num_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
-        ])
-
-        cat_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
-        ])
-
-        preprocessor = ColumnTransformer(
-            transformers=[
-                ('num', num_transformer, num_cols),
-                ('cat', cat_transformer, cat_cols)
-            ]
-        )
+        preprocessor = self._build_preprocessor(X)
 
         strat = y if len(np.unique(y)) <= 2 else None
         X_train, X_test, y_train, y_test = train_test_split(
@@ -496,8 +670,19 @@ class CreditRiskAutoMLEngine:
         """Serializes the champion model pipeline into pickle bytes for offline deployment."""
         if self.champion_model is None:
             raise ValueError("No champion model available to export.")
-        import pickle
-        return pickle.dumps(self.champion_model)
+        try:
+            import pickle
+            return pickle.dumps(self.champion_model)
+        except Exception:
+            try:
+                import cloudpickle
+                return cloudpickle.dumps(self.champion_model)
+            except Exception:
+                import joblib
+                import io
+                buf = io.BytesIO()
+                joblib.dump(self.champion_model, buf)
+                return buf.getvalue()
 
     def generate_inference_script(self) -> str:
         """Generates a standalone, ready-to-run Python inference script for data scientists."""

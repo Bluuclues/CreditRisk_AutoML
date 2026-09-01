@@ -134,3 +134,106 @@ div[data-testid="stInfo"] {
     border-left-color: #2563eb;
     background-color: #eff6ff;
 }
+
+/* Data Sources Registry Styles */
+.source-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.source-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+}
+
+.source-card-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.source-category-tag {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.badge-pending {
+    background-color: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+    padding: 3px 9px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 11px;
+    display: inline-block;
+}
+
+.badge-active {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #dcfce7;
+    padding: 3px 9px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 11px;
+    display: inline-block;
+}
+
+.source-meta-row {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.source-meta-row b {
+    color: #334155;
+}
+
+.source-desc {
+    font-size: 13px;
+    color: #475569;
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
+/* Information Popover & Floating Window Styling */
+div[data-testid="stPopover"] button {
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 3px 10px !important;
+    background-color: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-testid="stPopover"] button:hover {
+    background-color: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+}
+
+div[data-testid="stPopoverBody"] {
+    border-radius: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
+    padding: 16px !important;
+}
