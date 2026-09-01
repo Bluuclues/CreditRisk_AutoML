@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import uuid
 import streamlit.components.v1 as components
+from typing import Optional, Dict, Any, List, Tuple
 
 # Import custom backend modules
 from modules.data_validator import CreditRiskDataValidator
@@ -706,23 +707,41 @@ if st.session_state.training_completed and st.session_state.automl_results is no
         with col_ds1:
             st.markdown("**1. Trained Model Pipeline**")
             st.caption("Fitted preprocessing + classifier artifact (.pkl)")
+            pkl_bytes = b""
             if engine is not None and hasattr(engine, "export_pipeline_bytes"):
                 try:
                     pkl_bytes = engine.export_pipeline_bytes()
                 except Exception:
+                    try:
+                        import pickle
+                        pkl_bytes = pickle.dumps(champion_model)
+                    except Exception:
+                        try:
+                            import cloudpickle
+                            pkl_bytes = cloudpickle.dumps(champion_model)
+                        except Exception:
+                            pkl_bytes = b""
+            elif champion_model is not None:
+                try:
                     import pickle
                     pkl_bytes = pickle.dumps(champion_model)
-            else:
-                import pickle
-                pkl_bytes = pickle.dumps(champion_model)
+                except Exception:
+                    try:
+                        import cloudpickle
+                        pkl_bytes = cloudpickle.dumps(champion_model)
+                    except Exception:
+                        pkl_bytes = b""
 
-            st.download_button(
-                label="💾 Download Champion Pipeline (.pkl)",
-                data=pkl_bytes,
-                file_name="champion_pipeline.pkl",
-                mime="application/octet-stream",
-                use_container_width=True
-            )
+            if pkl_bytes:
+                st.download_button(
+                    label="💾 Download Champion Pipeline (.pkl)",
+                    data=pkl_bytes,
+                    file_name="champion_pipeline.pkl",
+                    mime="application/octet-stream",
+                    use_container_width=True
+                )
+            else:
+                st.info("Pipeline serialization will be ready once model fitting is complete.")
 
         with col_ds2:
             st.markdown("**2. Python Scoring Script**")
@@ -767,3 +786,123 @@ pd_scores = pipeline.predict_proba(new_loans)[:, 1]
 new_loans["predicted_pd"] = pd_scores
 print(new_loans[["borrower_id", "predicted_pd"]].head())
         """, language="python")
+
+
+# ==============================================================================
+# SECTION 5: AI ANALYST (NATURAL-LANGUAGE QUERY -> ANSWER + AUTO DASHBOARD)
+# ==============================================================================
+if st.session_state.data_ingested:
+    st.write("---")
+    st.subheader("🤖 5. AI Analyst — Ask Your Portfolio Anything")
+
+    try:
+        from modules.ai_assistant import NLQueryEngine, OllamaClient
+        _HAS_AI = True
+    except Exception:
+        _HAS_AI = False
+
+    if not _HAS_AI:
+        st.warning("AI Analyst module unavailable (`modules/ai_assistant.py`).")
+    else:
+        # --- Ollama (optional local LLM) setup ---
+        with st.expander("⚙️ Ollama Settings & Model Selection", expanded=False):
+            cfg_col1, cfg_col2 = st.columns([3, 1])
+            with cfg_col1:
+                ollama_base = st.text_input(
+                    "Ollama server URL",
+                    value=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+                    key="ollama_base",
+                )
+            with cfg_col2:
+                st.write("")
+                st.write("")
+                st.button("🔄 Test / Refresh", key="recheck_ollama", use_container_width=True)
+
+        _oc = OllamaClient(base_url=ollama_base.strip())
+        _available_models = _oc.list_models(timeout=2)
+
+        if _available_models:
+            default_idx = 0
+            for idx, m in enumerate(_available_models):
+                if "llama3" in m.lower():
+                    default_idx = idx
+                    break
+            
+            selected_model = _available_models[0]
+            if len(_available_models) > 1:
+                selected_model = st.selectbox(
+                    "🤖 Detected Ollama Models (Select active model for reasoning):",
+                    options=_available_models,
+                    index=default_idx,
+                    key="active_ollama_model_select"
+                )
+            _oc.model = selected_model
+            ai_llm = _oc
+            st.caption(f"🟢 **Ollama connected** — model `{selected_model}`. Free-form questions are interpreted locally via local LLM.")
+        else:
+            ai_llm = None
+            st.caption(f"🟡 **Ollama not detected** at `{ollama_base.strip()}` — using the built-in offline engine. Start `ollama serve` and pull a model to enable free-form LLM answers.")
+
+        ai_df = st.session_state.final_layered_df
+        ai_probs = None
+        ai_leaderboard = pd.DataFrame()
+        ai_importance = None
+        ai_champion = None
+        ai_explainer = None
+
+        if st.session_state.training_completed and st.session_state.automl_results is not None:
+            _res = st.session_state.automl_results
+            ai_probs = _res.get("predicted_probs")
+            ai_leaderboard = _res.get("leaderboard", pd.DataFrame())
+            ai_champion = _res.get("champion_name")
+            ai_explainer = _res.get("explainer")
+            if ai_explainer is not None:
+                try:
+                    ai_importance = ai_explainer.get_global_feature_importance_df(top_n=25)
+                except Exception:
+                    ai_importance = None
+
+        ai_context = {
+            "df": ai_df,
+            "probs": ai_probs,
+            "leaderboard": ai_leaderboard,
+            "feature_importance": ai_importance,
+            "explainer": ai_explainer,
+            "champion_name": ai_champion,
+        }
+
+        st.caption("Type a question in plain English — I'll answer it and build a dashboard. Charts and numbers are always computed accurately in-memory.")
+
+        ai_query = st.text_input(
+            "💬 Your question:",
+            placeholder="e.g. 'default rate by county', 'top 10 riskiest borrowers', 'what drives risk?', 'distribution of loan amount'",
+            key="ai_query",
+        )
+
+        if ai_query and ai_query.strip():
+            ai_engine = NLQueryEngine(llm=ai_llm)
+            with st.spinner("🧠 Analyzing your portfolio..."):
+                ai_result = ai_engine.run(ai_query.strip(), ai_context)
+
+            st.markdown(ai_result.get("answer", ""))
+
+            # KPI cards
+            ai_kpis = ai_result.get("kpis", []) or []
+            if ai_kpis:
+                kpi_cols = st.columns(min(len(ai_kpis), 4))
+                for i, k in enumerate(ai_kpis):
+                    with kpi_cols[i % len(kpi_cols)]:
+                        st.markdown(f"""
+                        <div class="kpi-card">
+                            <div class="kpi-title">{k.get('label', '')}</div>
+                            <div class="kpi-value">{k.get('value', '')}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+            # Charts
+            for fig in ai_result.get("figures", []) or []:
+                st.plotly_chart(fig, use_container_width=True)
+
+            # Tables
+            for tbl in ai_result.get("tables", []) or []:
+                st.dataframe(tbl, use_container_width=True)
