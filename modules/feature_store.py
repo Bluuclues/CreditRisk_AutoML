@@ -90,3 +90,18 @@ def export_parquet_snapshot(duck_conn: duckdb.DuckDBPyConnection, output_filepat
         return True
     except Exception:
         return False
+
+
+def update_iv_metadata(duck_conn: duckdb.DuckDBPyConnection, iv_df: pd.DataFrame) -> None:
+    """Updates the DuckDB metadata catalog with computed Information Value (IV) bands."""
+    for idx, row in iv_df.iterrows():
+        try:
+            duck_conn.execute(
+                f"""
+                UPDATE kba_feature_metadata_catalog 
+                SET iv_band = '{row["Predictive Power"]}'
+                WHERE feature_code = '{row["Feature Name"]}';
+                """
+            )
+        except Exception:
+            continue

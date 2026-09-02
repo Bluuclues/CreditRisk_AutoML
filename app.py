@@ -14,7 +14,8 @@ from typing import Optional, Dict, Any, List, Tuple
 
 # Import custom backend modules
 from modules.data_validator import CreditRiskDataValidator
-from modules.feature_store import apply_macro_layers, export_parquet_snapshot, export_parquet_bytes, export_csv_bytes
+from modules.feature_store import apply_macro_layers, export_parquet_snapshot, export_parquet_bytes, export_csv_bytes, update_iv_metadata
+from modules.iv_engine import calculate_portfolio_iv, plot_iv_chart, plot_iv_quadrant_chart
 from modules.models.dispatcher import run_automl_pipeline
 from modules.models.shap_explainer import CreditRiskExplainer
 from modules.eda_visualizer import CreditRiskEDA
@@ -419,6 +420,54 @@ with tab_engine:
                         )
                     except Exception:
                         st.caption("Parquet export engine (pyarrow) optional")
+
+        st.write("---")
+
+        # ==============================================================================
+        # SECTION 2.6: INFORMATION VALUE (IV) SCREENING
+        # ==============================================================================
+        with st.expander("🏷️ 2.6 Information Value (IV) Screening & Feature Catalog", expanded=True):
+            iv_df = calculate_portfolio_iv(st.session_state.final_layered_df, target="default_flag")
+            
+            # Update DuckDB metadata catalog with calculated IV bands
+            update_iv_metadata(st.session_state.duck_conn, iv_df)
+
+            col_iv_table, col_iv_chart = st.columns([1, 1])
+            with col_iv_table:
+                st.dataframe(
+                    iv_df.style.background_gradient(subset=["Information Value (IV)"], cmap="YlGn"),
+                    use_container_width=True
+                )
+                
+                # Download IV Table
+                st.download_button(
+                    label="📥 Download IV Table (.CSV)",
+                    data=iv_df.to_csv(index=False).encode('utf-8'),
+                    file_name="kba_iv_screening.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+            with col_iv_chart:
+                iv_fig = plot_iv_chart(iv_df)
+                st.plotly_chart(iv_fig, use_container_width=True)
+
+            st.write("---")
+            st.markdown("#### 🧭 Variable Discoverability Matrix")
+            st.caption("Plots Collection Hardness vs. Evidence x Information Value (IV) to prioritize feature acquisition.")
+            quadrant_fig = plot_iv_quadrant_chart(iv_df)
+            if quadrant_fig:
+                st.plotly_chart(quadrant_fig, use_container_width=True)
+            
+            st.write("---")
+            # 1-Click Feature Pruning
+            if st.checkbox("⚡ Auto-prune noisy features (IV < 0.02) before AutoML training", value=True):
+                valid_features = iv_df[iv_df["Information Value (IV)"] >= 0.02]["Feature Name"].tolist() + ["default_flag"]
+                # Keep essential tracking columns if present
+                for col in ["loan_no", "borrower_id", "session_id", "country_code", "loan_date", "due_date", "payoff_date"]:
+                    if col in st.session_state.final_layered_df.columns and col not in valid_features:
+                        valid_features.append(col)
+                st.session_state.final_layered_df = st.session_state.final_layered_df[valid_features]
 
         st.write("---")
 
