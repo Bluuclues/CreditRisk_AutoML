@@ -5,12 +5,20 @@ import duckdb
 import sqlite3
 import os
 import io
+import logging
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import uuid
 import streamlit.components.v1 as components
 from typing import Optional, Dict, Any, List, Tuple
+
+# Explicitly configure robust default sans-serif fonts and silence font lookup warnings
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Segoe UI', 'Liberation Sans', 'sans-serif']
+logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
 # Import custom backend modules
 from modules.data_validator import CreditRiskDataValidator
@@ -295,7 +303,7 @@ with tab_engine:
                     st.error(msg)
 
             if is_valid:
-                st.dataframe(clean_df.head(3), use_container_width=True)
+                st.dataframe(clean_df.head(3), width='stretch')
 
                 if st.button("⚡ Ingest into DuckDB Memory Store", type="primary", key="ingest_btn", help="Registers clean records into the ephemeral DuckDB in-memory analytical warehouse."):
                     clean_df['session_id'] = st.session_state.session_id
@@ -313,7 +321,7 @@ with tab_engine:
         st.success(f"✅ Ingested {len(st.session_state.primary_df):,} records into active DuckDB memory store!")
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
-            if st.button("🔄 Reset Portfolio & Upload New CSV", use_container_width=True, help="Wipes DuckDB in-memory tables and resets session state."):
+            if st.button("🔄 Reset Portfolio & Upload New CSV", width='stretch', help="Wipes DuckDB in-memory tables and resets session state."):
                 st.session_state.data_ingested = False
                 st.session_state.layers_applied = False
                 st.session_state.training_completed = False
@@ -328,7 +336,7 @@ with tab_engine:
                 data=baseline_csv,
                 file_name="kba_ingested_baseline.csv",
                 mime="text/csv",
-                use_container_width=True
+                width='stretch'
             )
 
     st.write("---")
@@ -397,7 +405,7 @@ with tab_engine:
             st.info(f"📊 Analytical Feature Store: **{st.session_state.final_layered_df.shape[1]} Total Features** Ready for AutoML Dispatcher")
             
             with st.expander("🔍 Preview Merged Feature Store & Data Science Exports"):
-                st.dataframe(st.session_state.final_layered_df.head(3), use_container_width=True)
+                st.dataframe(st.session_state.final_layered_df.head(3), width='stretch')
                 col_exp_fs1, col_exp_fs2 = st.columns(2)
                 with col_exp_fs1:
                     fs_csv = export_csv_bytes(st.session_state.final_layered_df)
@@ -406,7 +414,7 @@ with tab_engine:
                         data=fs_csv,
                         file_name="kba_feature_store_snapshot.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width='stretch'
                     )
                 with col_exp_fs2:
                     try:
@@ -416,7 +424,7 @@ with tab_engine:
                             data=fs_parquet,
                             file_name="kba_feature_store_snapshot.parquet",
                             mime="application/octet-stream",
-                            use_container_width=True
+                            width='stretch'
                         )
                     except Exception:
                         st.caption("Parquet export engine (pyarrow) optional")
@@ -436,7 +444,7 @@ with tab_engine:
             with col_iv_table:
                 st.dataframe(
                     iv_df.style.background_gradient(subset=["Information Value (IV)"], cmap="YlGn"),
-                    use_container_width=True
+                    width='stretch'
                 )
                 
                 # Download IV Table
@@ -445,19 +453,19 @@ with tab_engine:
                     data=iv_df.to_csv(index=False).encode('utf-8'),
                     file_name="kba_iv_screening.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    width='stretch'
                 )
                 
             with col_iv_chart:
                 iv_fig = plot_iv_chart(iv_df)
-                st.plotly_chart(iv_fig, use_container_width=True)
+                st.plotly_chart(iv_fig, width='stretch')
 
             st.write("---")
             st.markdown("#### 🧭 Variable Discoverability Matrix")
             st.caption("Plots Collection Hardness vs. Evidence x Information Value (IV) to prioritize feature acquisition.")
             quadrant_fig = plot_iv_quadrant_chart(iv_df)
             if quadrant_fig:
-                st.plotly_chart(quadrant_fig, use_container_width=True)
+                st.plotly_chart(quadrant_fig, width='stretch')
             
             st.write("---")
             # 1-Click Feature Pruning
@@ -500,7 +508,7 @@ with tab_engine:
                         """)
                 
                 stats_df = CreditRiskEDA.generate_descriptive_stats_df(active_eda_df)
-                st.dataframe(stats_df, use_container_width=True)
+                st.dataframe(stats_df, width='stretch')
                 
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
@@ -509,7 +517,7 @@ with tab_engine:
                         data=stats_df.to_csv(index=False).encode('utf-8'),
                         file_name="kba_descriptive_statistics.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width='stretch'
                     )
                 with col_d2:
                     buf_stat = io.BytesIO()
@@ -520,7 +528,7 @@ with tab_engine:
                         data=buf_stat.getvalue(),
                         file_name="kba_descriptive_statistics.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
+                        width='stretch'
                     )
                     
             with tab_dist:
@@ -535,7 +543,7 @@ with tab_engine:
                     """)
                 dist_fig = CreditRiskEDA.generate_feature_distributions_fig(active_eda_df)
                 if dist_fig:
-                    st.plotly_chart(dist_fig, use_container_width=True)
+                    st.plotly_chart(dist_fig, width='stretch')
                 dist_png = CreditRiskEDA.generate_feature_distributions_bytes(active_eda_df)
                 if dist_png:
                     st.download_button(
@@ -543,7 +551,7 @@ with tab_engine:
                         data=dist_png,
                         file_name="kba_feature_distributions.png",
                         mime="image/png",
-                        use_container_width=True
+                        width='stretch'
                     )
                     
             with tab_corr:
@@ -558,7 +566,7 @@ with tab_engine:
                     """)
                 corr_fig = CreditRiskEDA.generate_correlation_heatmap_fig(active_eda_df)
                 if corr_fig:
-                    st.plotly_chart(corr_fig, use_container_width=True)
+                    st.plotly_chart(corr_fig, width='stretch')
                 
                 col_c1, col_c2 = st.columns(2)
                 with col_c1:
@@ -569,7 +577,7 @@ with tab_engine:
                             data=corr_png,
                             file_name="kba_correlation_heatmap.png",
                             mime="image/png",
-                            use_container_width=True
+                            width='stretch'
                         )
                 with col_c2:
                     corr_matrix = CreditRiskEDA.generate_correlation_matrix(active_eda_df)
@@ -579,7 +587,7 @@ with tab_engine:
                             data=corr_matrix.to_csv().encode('utf-8'),
                             file_name="kba_correlation_matrix.csv",
                             mime="text/csv",
-                            use_container_width=True
+                            width='stretch'
                         )
                         
             with tab_box:
@@ -593,7 +601,7 @@ with tab_engine:
                     """)
                 box_fig = CreditRiskEDA.generate_boxplots_by_target_fig(active_eda_df)
                 if box_fig:
-                    st.plotly_chart(box_fig, use_container_width=True)
+                    st.plotly_chart(box_fig, width='stretch')
 
         st.write("---")
 
@@ -660,7 +668,7 @@ with tab_engine:
 
         with col_cfg3:
             st.markdown("**Engine Execution**")
-            if st.button("🚀 Run TabFM & AutoML Pipeline", type="primary", use_container_width=True, help="Trains LightGBM, XGBoost, CatBoost, TabFM, and candidate models via 5-Fold Stratified Cross-Validation."):
+            if st.button("🚀 Run TabFM & AutoML Pipeline", type="primary", width='stretch', help="Trains LightGBM, XGBoost, CatBoost, TabFM, and candidate models via 5-Fold Stratified Cross-Validation."):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -864,7 +872,7 @@ with tab_engine:
             
             # Render Decision Table
             display_table = decision_df.drop(columns=["Index"])
-            st.dataframe(display_table, use_container_width=True, height=280)
+            st.dataframe(display_table, width='stretch', height=280)
 
             # Get selected borrower record index
             sel_idx = decision_df[decision_df["Borrower ID"] == selected_borrower_id]["Index"].values[0]
@@ -956,7 +964,7 @@ with tab_engine:
                 if explainer is not None:
                     img_bytes = explainer.generate_waterfall_plot_bytes(sel_idx)
                     if img_bytes:
-                        st.image(img_bytes, use_container_width=True)
+                        st.image(img_bytes, width='stretch')
                     else:
                         st.info("TreeSHAP waterfall plot rendering unavailable for this model architecture.")
                 else:
@@ -987,7 +995,7 @@ with tab_engine:
                         """)
 
                 if not leaderboard_df.empty:
-                    st.dataframe(leaderboard_df, use_container_width=True)
+                    st.dataframe(leaderboard_df, width='stretch')
                 else:
                     st.write("Leaderboard data unavailable.")
 
@@ -1013,11 +1021,11 @@ with tab_engine:
                     with tab_bar:
                         plotly_fig = explainer.generate_plotly_feature_bar_fig(top_n=12)
                         if plotly_fig:
-                            st.plotly_chart(plotly_fig, use_container_width=True)
+                            st.plotly_chart(plotly_fig, width='stretch')
                         else:
                             bar_bytes = explainer.generate_bar_plot_bytes()
                             if bar_bytes:
-                                st.image(bar_bytes, use_container_width=True)
+                                st.image(bar_bytes, width='stretch')
                             else:
                                 st.info("Feature importance bar plot unavailable for this model architecture.")
                         
@@ -1028,24 +1036,24 @@ with tab_engine:
                                 data=bar_bytes,
                                 file_name="portfolio_shap_feature_importance.png",
                                 mime="image/png",
-                                use_container_width=True
+                                width='stretch'
                             )
 
                     with tab_bee:
                         beeswarm_bytes = explainer.generate_beeswarm_plot_bytes()
                         if beeswarm_bytes:
-                            st.image(beeswarm_bytes, use_container_width=True)
+                            st.image(beeswarm_bytes, width='stretch')
                             st.caption("Dots represent individual borrowers. Color denotes feature value (Red = High, Blue = Low). Position on X-axis denotes risk impact.")
 
                     with tab_tbl:
                         imp_df = explainer.get_global_feature_importance_df(top_n=25)
-                        st.dataframe(imp_df, use_container_width=True)
+                        st.dataframe(imp_df, width='stretch')
                         st.download_button(
                             label="⬇️ Export Feature Importance Table (.CSV)",
                             data=imp_df.to_csv(index=False).encode('utf-8'),
                             file_name="kba_global_feature_importance.csv",
                             mime="text/csv",
-                            use_container_width=True
+                            width='stretch'
                         )
                 else:
                     st.info("Fit TreeSHAP explainer to view portfolio-wide feature attributions.")
@@ -1069,7 +1077,7 @@ with tab_engine:
                 file_name="kba_scored_portfolio.csv",
                 mime="text/csv",
                 type="primary",
-                use_container_width=True
+                width='stretch'
             )
 
         with col_exp2:
@@ -1081,7 +1089,7 @@ with tab_engine:
                 data=buf.getvalue(),
                 file_name="kba_scored_portfolio.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                width='stretch'
             )
 
         # Data Scientist & ML Engineer Artifacts Hub
@@ -1130,7 +1138,7 @@ with tab_engine:
                         data=pkl_bytes,
                         file_name="champion_pipeline.pkl",
                         mime="application/octet-stream",
-                        use_container_width=True
+                        width='stretch'
                     )
                 else:
                     st.info("Pipeline serialization will be ready once model fitting is complete.")
@@ -1148,7 +1156,7 @@ with tab_engine:
                     data=py_script.encode('utf-8'),
                     file_name="infer_credit_model.py",
                     mime="text/x-python",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             with col_ds3:
@@ -1160,7 +1168,7 @@ with tab_engine:
                     data=leaderboard_csv,
                     file_name="automl_leaderboard_benchmark.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    width='stretch'
                 )
 
             st.markdown("**Python Scoring Recipe (Copy & Paste):**")
@@ -1221,7 +1229,7 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                 with cfg_col2:
                     st.write("")
                     st.write("")
-                    st.button("🔄 Test / Refresh", key="recheck_ollama", use_container_width=True)
+                    st.button("🔄 Test / Refresh", key="recheck_ollama", width='stretch')
 
             _oc = OllamaClient(base_url=ollama_base.strip())
             _available_models = _oc.list_models(timeout=2)
@@ -1306,11 +1314,11 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
 
                 # Charts
                 for fig in ai_result.get("figures", []) or []:
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
 
                 # Tables
                 for tbl in ai_result.get("tables", []) or []:
-                    st.dataframe(tbl, use_container_width=True)
+                    st.dataframe(tbl, width='stretch')
 
 
 # ##############################################################################
@@ -1435,7 +1443,7 @@ with tab_sources:
                     width="large"
                 ),
             },
-            use_container_width=True,
+            width='stretch',
             height=380
         )
 
@@ -1447,7 +1455,7 @@ with tab_sources:
                 data=sources_csv,
                 file_name="kba_alternative_data_sources.csv",
                 mime="text/csv",
-                use_container_width=True
+                width='stretch'
             )
         with col_dl2:
             buf_src = io.BytesIO()
@@ -1458,7 +1466,7 @@ with tab_sources:
                 data=buf_src.getvalue(),
                 file_name="kba_alternative_data_sources.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                width='stretch'
             )
     else:
         st.info("No data sources match the selected search query or filters.")

@@ -10,10 +10,17 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import logging
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
+
+# Explicitly configure robust default sans-serif fonts and silence font lookup warnings
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Segoe UI', 'Liberation Sans', 'sans-serif']
+logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
 
 class CreditRiskEDA:
