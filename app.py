@@ -1512,3 +1512,18 @@ with tab_sources:
                 st.info("Methodology file not found at METHODOLOGY.md")
         except Exception as e:
             st.warning(f"Unable to load METHODOLOGY.md: {str(e)}")
+
+
+if __name__ == "__main__":
+    import sys
+    try:
+        from streamlit.web import cli as stcli
+    except ImportError:
+        try:
+            import streamlit.cli as stcli
+        except ImportError:
+            stcli = None
+
+    if stcli is not None and not st.runtime.exists():
+        sys.argv = ["streamlit", "run", os.path.abspath(__file__)] + sys.argv[1:]
+        sys.exit(stcli.main())
