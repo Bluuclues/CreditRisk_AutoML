@@ -55,6 +55,7 @@ class CreditRiskEDA:
                 p75_val = round(float(valid_s.quantile(0.75)), 2) if len(valid_s) > 0 else np.nan
                 max_val = round(float(valid_s.max()), 2) if len(valid_s) > 0 else np.nan
                 skew_val = round(float(valid_s.skew()), 2) if len(valid_s) > 2 else np.nan
+                top_val = str(s.mode().iloc[0]) if not s.mode().empty else "N/A"
 
                 records.append({
                     "Feature": col,
@@ -69,7 +70,8 @@ class CreditRiskEDA:
                     "Median (50%)": median_val,
                     "75%": p75_val,
                     "Max": max_val,
-                    "Skewness": skew_val
+                    "Skewness": skew_val,
+                    "Mode": top_val
                 })
             else:
                 top_val = str(s.mode().iloc[0]) if not s.mode().empty else "N/A"
@@ -79,17 +81,33 @@ class CreditRiskEDA:
                     "Count": total_rows - missing_cnt,
                     "Missing (%)": f"{missing_pct}%",
                     "Unique": unique_cnt,
-                    "Mean": top_val,
+                    "Mean": np.nan,
                     "Std": np.nan,
                     "Min": np.nan,
                     "25%": np.nan,
                     "Median (50%)": np.nan,
                     "75%": np.nan,
                     "Max": np.nan,
-                    "Skewness": np.nan
+                    "Skewness": np.nan,
+                    "Mode": top_val
                 })
 
-        return pd.DataFrame(records)
+        res_df = pd.DataFrame(records)
+        if res_df.empty:
+            return pd.DataFrame(columns=[
+                "Feature", "Type", "Count", "Missing (%)", "Unique",
+                "Mean", "Std", "Min", "25%", "Median (50%)", "75%", "Max", "Skewness", "Mode"
+            ])
+
+        numeric_stat_cols = ["Mean", "Std", "Min", "25%", "Median (50%)", "75%", "Max", "Skewness"]
+        for c in numeric_stat_cols:
+            if c in res_df.columns:
+                res_df[c] = pd.to_numeric(res_df[c], errors="coerce").astype(float)
+
+        if "Mode" in res_df.columns:
+            res_df["Mode"] = res_df["Mode"].astype(str)
+
+        return res_df
 
     @staticmethod
     def generate_correlation_matrix(df: pd.DataFrame, max_cols: int = 16) -> pd.DataFrame:
