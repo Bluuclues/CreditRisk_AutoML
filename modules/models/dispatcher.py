@@ -41,9 +41,11 @@ def run_automl_pipeline(
     # Initialize SHAP explainer
     explainer = None
     try:
-        sample_subset = X_matrix.head(200)
+        sample_subset = X_matrix.head(min(200, len(X_matrix)))
         explainer = CreditRiskExplainer(champion_model, sample_subset)
-    except Exception:
+    except Exception as exp_err:
+        import logging
+        logging.getLogger(__name__).warning(f"TreeSHAP initialization note: {exp_err}")
         explainer = None
 
     results["predicted_probs"] = predicted_probs

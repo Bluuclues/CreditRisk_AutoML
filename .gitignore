@@ -13,4 +13,9 @@
 
 # Ignore Python Environment Files
 venv/
+.venv/
 __pycache__/
+catboost_info/
+*.log
+.pytest_cache/
+scratch/

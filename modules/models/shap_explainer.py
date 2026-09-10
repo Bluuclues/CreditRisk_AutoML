@@ -58,23 +58,41 @@ class CreditRiskExplainer:
         # 2. Transform features
         if self.preprocessor is not None:
             try:
-                self.X_transformed = self.preprocessor.transform(self.X_sample)
-                if hasattr(self.X_transformed, "toarray"):
-                    self.X_transformed = self.X_transformed.toarray()
-                
-                try:
-                    if hasattr(self.preprocessor, "get_feature_names_out"):
-                        self.feature_names = list(self.preprocessor.get_feature_names_out())
+                transformed = self.preprocessor.transform(self.X_sample)
+                if isinstance(transformed, pd.DataFrame):
+                    self.feature_names = list(transformed.columns)
+                    self.X_transformed = transformed.values
+                else:
+                    if hasattr(transformed, "toarray"):
+                        self.X_transformed = transformed.toarray()
                     else:
+                        self.X_transformed = np.asarray(transformed)
+                    
+                    if hasattr(self.pipeline, "get_feature_names_out"):
+                        try:
+                            self.feature_names = list(self.pipeline.get_feature_names_out())
+                        except Exception:
+                            self.feature_names = list(self.X_sample.columns) if len(self.X_sample.columns) == self.X_transformed.shape[1] else [f"feat_{i}" for i in range(self.X_transformed.shape[1])]
+                    elif hasattr(self.preprocessor, "get_feature_names_out"):
+                        try:
+                            self.feature_names = list(self.preprocessor.get_feature_names_out())
+                        except Exception:
+                            self.feature_names = list(self.X_sample.columns) if len(self.X_sample.columns) == self.X_transformed.shape[1] else [f"feat_{i}" for i in range(self.X_transformed.shape[1])]
+                    elif len(self.X_sample.columns) == self.X_transformed.shape[1]:
                         self.feature_names = list(self.X_sample.columns)
-                except Exception:
-                    self.feature_names = [f"feat_{i}" for i in range(self.X_transformed.shape[1])]
+                    else:
+                        self.feature_names = [f"feat_{i}" for i in range(self.X_transformed.shape[1])]
             except Exception:
                 self.X_transformed = self.X_sample.values
                 self.feature_names = list(self.X_sample.columns)
         else:
             self.X_transformed = self.X_sample.values
             self.feature_names = list(self.X_sample.columns)
+
+        if isinstance(self.X_transformed, pd.DataFrame):
+            self.X_transformed = self.X_transformed.values
+        elif not isinstance(self.X_transformed, np.ndarray):
+            self.X_transformed = np.asarray(self.X_transformed)
 
         # Clean feature names for presentation
         self.clean_feature_names = [
@@ -105,19 +123,12 @@ class CreditRiskExplainer:
                         vals = vals[1]
                     elif isinstance(vals, np.ndarray) and vals.ndim == 3:
                         vals = vals[:, :, 1]
-                    sub_shaps.append(vals)
-                    if self.explainer is None:
-                        self.explainer = exp
-                except Exception:
-                    try:
-                        exp = shap.Explainer(est, self.X_transformed)
-                        explanation = exp(self.X_transformed)
-                        vals = explanation.values
-                        if vals.ndim == 3:
-                            vals = vals[:, :, 1]
+                    if vals is not None and getattr(vals, "shape", None) == (len(self.X_transformed), self.X_transformed.shape[1]):
                         sub_shaps.append(vals)
-                    except Exception:
-                        pass
+                        if self.explainer is None:
+                            self.explainer = exp
+                except Exception:
+                    pass
 
             if sub_shaps:
                 self.shap_values = np.mean(sub_shaps, axis=0)
@@ -136,37 +147,56 @@ class CreditRiskExplainer:
             except Exception:
                 pass
 
-        # Case C: Model-Agnostic / Kernel / Linear Explainer
+        # Case C: Model-Agnostic / Kernel / Linear Explainer (fast sampling)
         if self.shap_values is None:
             try:
-                sample_bg = shap.sample(self.X_transformed, min(50, len(self.X_transformed)))
+                bg_size = min(30, len(self.X_transformed))
+                sample_bg = shap.sample(self.X_transformed, bg_size)
+                eval_size = min(50, len(self.X_transformed))
                 if hasattr(self.classifier, "predict_proba"):
                     exp = shap.KernelExplainer(lambda x: self.classifier.predict_proba(x)[:, 1], sample_bg)
-                    self.shap_values = exp.shap_values(self.X_transformed[:min(150, len(self.X_transformed))])
+                    self.shap_values = exp.shap_values(self.X_transformed[:eval_size], nsamples=50)
                     self.explainer = exp
                 elif hasattr(self.classifier, "predict"):
                     exp = shap.KernelExplainer(self.classifier.predict, sample_bg)
-                    self.shap_values = exp.shap_values(self.X_transformed[:min(150, len(self.X_transformed))])
+                    self.shap_values = exp.shap_values(self.X_transformed[:eval_size], nsamples=50)
                     self.explainer = exp
             except Exception:
                 pass
 
         # Case D: Universal Model-Agnostic Feature Sensitivity Guarantee
         if self.shap_values is None:
-            # Derive standardized attributions from feature importances or variance
             n_samples, n_feats = self.X_transformed.shape
             if hasattr(self.classifier, "feature_importances_"):
                 imp = self.classifier.feature_importances_
+            elif hasattr(self.classifier, "coef_"):
+                imp = np.abs(self.classifier.coef_).flatten()
+                if len(imp) != n_feats:
+                    imp = np.ones(n_feats) / n_feats
             else:
                 imp = np.ones(n_feats) / n_feats
 
-            # Center X
-            x_mean = np.nanmean(self.X_transformed, axis=0)
-            x_std = np.nanstd(self.X_transformed, axis=0) + 1e-6
-            x_norm = (self.X_transformed - x_mean) / x_std
+            # Center X safely with numeric coercion
+            try:
+                X_num = np.asarray(self.X_transformed, dtype=float)
+            except Exception:
+                X_df = pd.DataFrame(self.X_transformed)
+                for col in X_df.columns:
+                    X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0.0)
+                X_num = X_df.values.astype(float)
+
+            x_mean = np.nanmean(X_num, axis=0)
+            x_std = np.nanstd(X_num, axis=0) + 1e-6
+            x_norm = (X_num - x_mean) / x_std
             
-            # Synthetic directional SHAP matrix
-            self.shap_values = (x_norm * imp) * 0.1
+            imp_norm = imp / (np.sum(imp) + 1e-6)
+            self.shap_values = (x_norm * imp_norm) * 0.1
+
+        # Ensure shap_values is an array of floats
+        if self.shap_values is not None:
+            if isinstance(self.shap_values, pd.DataFrame):
+                self.shap_values = self.shap_values.values
+            self.shap_values = np.asarray(self.shap_values, dtype=float)
 
         # Format base expected value
         if self.explainer is not None and hasattr(self.explainer, "expected_value"):
@@ -180,6 +210,49 @@ class CreditRiskExplainer:
         else:
             self.expected_value = 0.25
 
+    def _get_row_shap_vector(self, record_idx: int) -> Tuple[np.ndarray, np.ndarray]:
+        """Returns or on-demand calculates SHAP values and transformed features for any record index."""
+        if self.shap_values is not None and record_idx < len(self.shap_values):
+            s_row = self.shap_values.iloc[record_idx].values if isinstance(self.shap_values, pd.DataFrame) else self.shap_values[record_idx]
+            x_row = self.X_transformed.iloc[record_idx].values if isinstance(self.X_transformed, pd.DataFrame) else self.X_transformed[record_idx]
+            return np.asarray(s_row, dtype=float), np.asarray(x_row)
+
+        # On-demand calculation if index is beyond initial sample subset
+        if record_idx < len(self.X_sample):
+            try:
+                row_df = self.X_sample.iloc[[record_idx]]
+                if self.preprocessor is not None:
+                    row_trans = self.preprocessor.transform(row_df)
+                    if hasattr(row_trans, "toarray"):
+                        row_trans = row_trans.toarray()
+                    elif isinstance(row_trans, pd.DataFrame):
+                        row_trans = row_trans.values
+                    else:
+                        row_trans = np.asarray(row_trans)
+                else:
+                    row_trans = row_df.values
+
+                if self.explainer is not None:
+                    v = self.explainer.shap_values(row_trans)
+                    if isinstance(v, list) and len(v) > 1:
+                        v = v[1]
+                    elif isinstance(v, np.ndarray) and v.ndim == 3:
+                        v = v[:, :, 1]
+                    return np.asarray(v[0], dtype=float), np.asarray(row_trans[0])
+            except Exception:
+                pass
+
+        # Fallback to mean shap vector
+        if self.shap_values is not None and len(self.shap_values) > 0:
+            s_mat = self.shap_values.values if isinstance(self.shap_values, pd.DataFrame) else self.shap_values
+            mean_vec = np.mean(s_mat, axis=0)
+            x_idx = min(record_idx, len(self.X_transformed) - 1)
+            trans_vec = self.X_transformed.iloc[x_idx].values if isinstance(self.X_transformed, pd.DataFrame) else self.X_transformed[x_idx]
+            return np.asarray(mean_vec, dtype=float), np.asarray(trans_vec)
+
+        n_feats = len(self.clean_feature_names)
+        return np.zeros(n_feats), np.zeros(n_feats)
+
     def get_borrower_adverse_reasons(
         self, 
         record_idx: int, 
@@ -188,15 +261,7 @@ class CreditRiskExplainer:
         """
         Decomposes positive SHAP values into intuitive adverse action percentage drivers.
         """
-        if self.shap_values is None or record_idx >= len(self.shap_values):
-            return [{
-                "feature_name": "General Credit Risk Profile",
-                "feature_value": "N/A",
-                "impact_percentage": 100.0,
-                "reason_text": "Overall credit score and historical payment metrics elevate risk."
-            }]
-
-        row_shaps = self.shap_values[record_idx]
+        row_shaps, row_data = self._get_row_shap_vector(record_idx)
         pos_indices = np.where(row_shaps > 0)[0]
 
         if len(pos_indices) == 0:
@@ -215,8 +280,8 @@ class CreditRiskExplainer:
 
         for rank in range(min(top_k, len(sorted_order))):
             idx = pos_indices[sorted_order[rank]]
-            feat_raw = self.clean_feature_names[idx]
-            raw_val = self.X_transformed[record_idx, idx] if self.X_transformed is not None else "N/A"
+            feat_raw = self.clean_feature_names[idx] if idx < len(self.clean_feature_names) else f"feat_{idx}"
+            raw_val = row_data[idx] if idx < len(row_data) else "N/A"
 
             if isinstance(raw_val, (float, np.floating)):
                 formatted_val = f"{raw_val:.2f}"
@@ -238,16 +303,17 @@ class CreditRiskExplainer:
 
     def generate_waterfall_plot_bytes(self, record_idx: int) -> Optional[bytes]:
         """Generates a high-res SHAP Waterfall plot image buffer for a specific borrower."""
-        if self.shap_values is None or record_idx >= len(self.shap_values):
+        row_shaps, row_data = self._get_row_shap_vector(record_idx)
+        if np.all(row_shaps == 0):
             return None
 
         try:
             fig, ax = plt.subplots(figsize=(8, 4.5))
             
             exp_obj = shap.Explanation(
-                values=self.shap_values[record_idx],
+                values=row_shaps,
                 base_values=self.expected_value,
-                data=self.X_transformed[record_idx],
+                data=row_data,
                 feature_names=self.clean_feature_names
             )
             

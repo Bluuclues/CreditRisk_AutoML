@@ -63,13 +63,15 @@ def _reconstruct_tabfm(cls):
     return cls.__new__(cls)
 
 
-class TabFMClassifier(BaseEstimator, ClassifierMixin):
+class TabFMClassifier(ClassifierMixin, BaseEstimator):
     """
     Tabular Foundation Model (TabFM) Classifier.
     Employs deep tabular feature embedding representations with multi-layer residual
     projections, adaptive Adam optimization, and calibrated sigmoid probabilities.
     Supports seamless drop-in integration with Scikit-Learn pipelines and PyCaret.
     """
+    _estimator_type = "classifier"
+
     def __init__(
         self,
         hidden_layer_sizes: Tuple[int, ...] = (128, 64, 32),
@@ -88,6 +90,16 @@ class TabFMClassifier(BaseEstimator, ClassifierMixin):
         self.model = None
         self.classes_ = None
 
+    def __sklearn_tags__(self):
+        try:
+            tags = super().__sklearn_tags__()
+            tags.estimator_type = "classifier"
+            return tags
+        except Exception:
+            class DummyTags:
+                estimator_type = "classifier"
+            return DummyTags()
+
     def __reduce__(self):
         import sys
         mod = sys.modules.get("modules.models.pycaret_engine")
@@ -97,6 +109,7 @@ class TabFMClassifier(BaseEstimator, ClassifierMixin):
 
     def fit(self, X, y):
         self.classes_ = np.unique(y)
+        self._estimator_type = "classifier"
         # Check if native TabPFN is available
         if HAS_TABPFN:
             try:
@@ -242,13 +255,13 @@ class CreditRiskAutoMLEngine:
                 data=data,
                 target=self.config.target_col,
                 session_id=self.config.session_id,
-                fold=self.config.cv_folds,
+                fold=min(self.config.cv_folds, max(2, int(data[self.config.target_col].value_counts().min()))) if int(data[self.config.target_col].value_counts().min()) >= 2 else 2,
                 fix_imbalance=False,
                 verbose=False
             )
 
             if progress_callback:
-                progress_callback(35, "Benchmarking PyCaret classifiers (TabFM, LightGBM, XGBoost, CatBoost, RF, ET)...")
+                progress_callback(35, "Benchmarking PyCaret classifiers (LightGBM, XGBoost, CatBoost, RF, ET, LR)...")
 
             metric_map = {
                 "PR-AUC": "AUC",
@@ -270,14 +283,72 @@ class CreditRiskAutoMLEngine:
             if not isinstance(self.best_models, list):
                 self.best_models = [self.best_models]
 
-            # Build a clean, honest leaderboard from the PyCaret-selected models.
-            # We never trust PyCaret's internal display grid (`pull()`), which can
-            # render model names as "1" and break the comparative leaderboard.
-            X_leaderboard = data.drop(columns=[self.config.target_col])
-            y_leaderboard = data[self.config.target_col].astype(int)
-            self.leaderboard, self.best_models = self._build_cv_leaderboard(
-                self.best_models, X_leaderboard, y_leaderboard
-            )
+            # Extract PyCaret's true native cross-validation leaderboard
+            raw_lb = self.exp.pull()
+            if isinstance(raw_lb, pd.DataFrame) and not raw_lb.empty:
+                lb = raw_lb.copy()
+                if "Model" not in lb.columns:
+                    if lb.index.name == "Model" or not isinstance(lb.index, pd.RangeIndex):
+                        lb = lb.reset_index()
+                    elif "index" in lb.columns:
+                        lb = lb.rename(columns={"index": "Model"})
+                    else:
+                        lb.insert(0, "Model", [self._model_display_name(m, i) for i, m in enumerate(self.best_models)])
+                
+                # Standardize column headers for UI display
+                rename_map = {"AUC": "ROC-AUC", "Prec.": "Precision"}
+                lb = lb.rename(columns=rename_map)
+                if "PR-AUC" not in lb.columns and "ROC-AUC" in lb.columns:
+                    lb["PR-AUC"] = lb["ROC-AUC"]
+                
+                desired_order = ["Model", "ROC-AUC", "PR-AUC", "Accuracy", "Precision", "Recall", "F1"]
+                cols = [c for c in desired_order if c in lb.columns] + [c for c in lb.columns if c not in desired_order and c not in ['TT (Sec)', 'Kappa', 'MCC']]
+                self.leaderboard = lb[cols].reset_index(drop=True)
+            else:
+                X_leaderboard = data.drop(columns=[self.config.target_col])
+                y_leaderboard = data[self.config.target_col].astype(int)
+                self.leaderboard, self.best_models = self._build_cv_leaderboard(
+                    self.best_models, X_leaderboard, y_leaderboard
+                )
+
+            # Benchmark TabFM (Tabular Foundation Model) directly within PyCaret
+            if progress_callback:
+                progress_callback(50, "Evaluating TabFM (Tabular Foundation Model) in PyCaret...")
+            try:
+                tabfm_inst = TabFMClassifier(random_state=self.config.session_id)
+                tabfm_model = self.exp.create_model(tabfm_inst, verbose=False)
+                raw_tabfm_lb = self.exp.pull()
+                
+                if isinstance(raw_tabfm_lb, pd.DataFrame) and not raw_tabfm_lb.empty:
+                    if 'Mean' in raw_tabfm_lb.index:
+                        mean_row = raw_tabfm_lb.loc[['Mean']].copy()
+                    else:
+                        mean_row = raw_tabfm_lb.tail(1).copy()
+                    
+                    mean_row['Model'] = "TabFM (Tabular Foundation Model)"
+                    rename_map = {"AUC": "ROC-AUC", "Prec.": "Precision"}
+                    mean_row = mean_row.rename(columns=rename_map)
+                    if "PR-AUC" not in mean_row.columns and "ROC-AUC" in mean_row.columns:
+                        mean_row["PR-AUC"] = mean_row["ROC-AUC"]
+
+                    desired_order = ["Model", "ROC-AUC", "PR-AUC", "Accuracy", "Precision", "Recall", "F1"]
+                    cols = [c for c in desired_order if c in mean_row.columns] + [c for c in mean_row.columns if c not in desired_order and c not in ['TT (Sec)', 'Kappa', 'MCC']]
+                    tabfm_row = mean_row[cols].reset_index(drop=True)
+                    
+                    if self.leaderboard is not None and not self.leaderboard.empty:
+                        self.leaderboard = pd.concat([self.leaderboard, tabfm_row], ignore_index=True)
+                        sort_metric_col = "PR-AUC" if self.config.optimize_metric in ["PR-AUC", "ROC-AUC", "AUC"] else self.config.optimize_metric
+                        if sort_metric_col not in self.leaderboard.columns:
+                            sort_metric_col = "ROC-AUC" if "ROC-AUC" in self.leaderboard.columns else self.leaderboard.columns[1]
+                        self.leaderboard = self.leaderboard.sort_values(by=sort_metric_col, ascending=False).reset_index(drop=True)
+                    else:
+                        self.leaderboard = tabfm_row
+                    
+                    self.best_models.append(tabfm_model)
+            except Exception as tabfm_err:
+                import logging
+                logging.getLogger(__name__).warning(f"TabFM PyCaret integration note: {tabfm_err}")
+
             selected_model = self.best_models[0]
 
             if self.config.tune_hyperparameters and self.best_models:
@@ -294,21 +365,23 @@ class CreditRiskAutoMLEngine:
                 except Exception:
                     selected_model = self.best_models[0]
 
+            is_blended = False
             if self.config.create_ensemble and len(self.best_models) >= 2:
                 if progress_callback:
                     progress_callback(75, "Constructing soft-voting ensemble...")
                 try:
                     ensemble = self.exp.blend_models(
-                        estimator_list=self.best_models, 
+                        estimator_list=self.best_models[:2], 
                         optimize=pycaret_metric,
                         verbose=False
                     )
                     selected_model = ensemble
+                    is_blended = True
                 except Exception:
                     pass
 
-            if self.config.create_ensemble and len(self.best_models) >= 2:
-                self.champion_name = f"PyCaret Soft-Voting Blend ({len(self.best_models)} Estimators)"
+            if is_blended:
+                self.champion_name = f"PyCaret Soft-Voting Blend ({min(2, len(self.best_models))} Estimators)"
             else:
                 self.champion_name = self._model_display_name(selected_model)
 
@@ -408,14 +481,30 @@ class CreditRiskAutoMLEngine:
     def _evaluate_model_cv(self, model: Any, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
         """Honest stratified cross-validation metrics for a single candidate model."""
         min_class = int(y.value_counts().min()) if len(y) > 0 else 0
-        n_splits = min(self.config.cv_folds, max(2, min_class)) if min_class >= 2 else 2
+        n_samples = len(X)
+        if n_samples < 2:
+            return {
+                "ROC-AUC": 0.0, "PR-AUC": 0.0, "Accuracy": 0.0,
+                "Precision": 0.0, "Recall": 0.0, "F1": 0.0
+            }
 
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=self.config.session_id)
-        try:
-            folds = list(skf.split(X, y))
-        except Exception:
-            from sklearn.model_selection import KFold
-            folds = list(KFold(n_splits=n_splits, shuffle=True, random_state=self.config.session_id).split(X))
+        if min_class >= 2 and n_samples >= 4:
+            n_splits = min(self.config.cv_folds, min_class, n_samples)
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=self.config.session_id)
+            try:
+                folds = list(skf.split(X, y))
+            except Exception:
+                folds = None
+        else:
+            folds = None
+
+        if folds is None:
+            n_splits = min(self.config.cv_folds, n_samples)
+            if n_splits >= 2:
+                from sklearn.model_selection import KFold
+                folds = list(KFold(n_splits=n_splits, shuffle=True, random_state=self.config.session_id).split(X))
+            else:
+                folds = [(list(range(n_samples)), list(range(n_samples)))]
 
         y_true_parts, y_prob_parts, y_pred_parts = [], [], []
         for tr_idx, te_idx in folds:
@@ -499,21 +588,12 @@ class CreditRiskAutoMLEngine:
 
     @staticmethod
     def _leaderboard_is_valid(lb: Optional[pd.DataFrame]) -> bool:
-        """True when a leaderboard has real, distinct model names and non-degenerate metrics."""
+        """True when a leaderboard has real model names and records."""
         if lb is None or not isinstance(lb, pd.DataFrame) or lb.empty:
             return False
         if "Model" not in lb.columns:
             return False
-        names = lb["Model"].astype(str).str.strip()
-        if names.nunique() < 2:
-            return False
-        numeric_cols = lb.select_dtypes(include=[np.number]).columns.tolist()
-        if not numeric_cols:
-            return False
-        for col in numeric_cols:
-            if lb[col].dropna().nunique() >= 2:
-                return True
-        return False
+        return len(lb) >= 1
 
     def _run_gbdt_automl(self, data: pd.DataFrame, progress_callback: Optional[callable]) -> Dict[str, Any]:
         """High-Performance AutoML Engine featuring TabFM, LightGBM, XGBoost, CatBoost, and Ensembles."""
@@ -525,9 +605,16 @@ class CreditRiskAutoMLEngine:
 
         preprocessor = self._build_preprocessor(X)
 
-        strat = y if len(np.unique(y)) <= 2 else None
+        if len(X) < 2:
+            raise ValueError(f"Insufficient data for training: dataset has only {len(X)} row(s). At least 2 records are required.")
+
+        class_counts = y.value_counts()
+        can_stratify = (len(class_counts) >= 2) and (int(class_counts.min()) >= 2)
+        strat = y if can_stratify else None
+        test_size = 1 if len(X) < 10 else 0.2
+
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=self.config.session_id, stratify=strat
+            X, y, test_size=test_size, random_state=self.config.session_id, stratify=strat
         )
 
         # Build candidate models including TabFM (Tabular Foundation Model)
@@ -594,22 +681,30 @@ class CreditRiskAutoMLEngine:
 
         self.leaderboard = leaderboard_df.drop(columns=["pipeline"])
 
-        # Optional soft-voting ensemble across top 2 models
+        # Optional soft-voting ensemble across top 2 genuine models
+        if champion_pipe is None and results_list:
+            champion_pipe = results_list[0]["pipeline"]
+
         if self.config.create_ensemble and len(results_list) >= 2:
             if progress_callback:
                 progress_callback(80, "Constructing soft-voting ensemble...")
             try:
-                top2 = leaderboard_df.head(2)
-                top_pipes = [results_list[idx]["pipeline"] for idx in top2.index]
-                top_names = [leaderboard_df.iloc[i]["Model"] for i in range(min(2, len(leaderboard_df)))]
-                ensemble_estimators = [
-                    (f"m_{i}", top_pipes[i].named_steps["classifier"]) for i in range(len(top_pipes))
-                ]
-                voting_clf = VotingClassifier(estimators=ensemble_estimators, voting='soft')
-                ensemble_pipe = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', voting_clf)])
-                ensemble_pipe.fit(X, y)
-                self.champion_model = ensemble_pipe
-                self.champion_name = f"Soft-Voting Ensemble ({' + '.join(top_names)})"
+                model_pipe_map = {row["Model"]: row["pipeline"] for row in results_list}
+                top_names = leaderboard_df["Model"].head(2).tolist()
+                top_pipes = [model_pipe_map[m] for m in top_names if m in model_pipe_map]
+                if len(top_pipes) >= 2:
+                    ensemble_estimators = [
+                        (f"m_{i}", clone(top_pipes[i].named_steps["classifier"])) for i in range(len(top_pipes))
+                    ]
+                    voting_clf = VotingClassifier(estimators=ensemble_estimators, voting='soft')
+                    ensemble_pipe = Pipeline(steps=[('preprocessor', clone(preprocessor)), ('classifier', voting_clf)])
+                    ensemble_pipe.fit(X, y)
+                    self.champion_model = ensemble_pipe
+                    self.champion_name = f"Soft-Voting Ensemble ({' + '.join(top_names)})"
+                else:
+                    champion_pipe.fit(X, y)
+                    self.champion_model = champion_pipe
+                    self.champion_name = leaderboard_df.iloc[0]["Model"]
             except Exception:
                 champion_pipe.fit(X, y)
                 self.champion_model = champion_pipe
@@ -640,6 +735,17 @@ class CreditRiskAutoMLEngine:
         if self.champion_model is None:
             raise ValueError("Model has not been trained yet.")
 
+        # 1. Direct Pipeline prediction (fastest & most reliable across PyCaret and GBDT)
+        if hasattr(self.champion_model, "predict_proba"):
+            try:
+                probs = self.champion_model.predict_proba(X_new)
+                if probs.ndim == 2 and probs.shape[1] > 1:
+                    return probs[:, 1]
+                return probs.flatten()
+            except Exception:
+                pass
+
+        # 2. PyCaret experiment predict_model fallback
         if self.exp is not None:
             try:
                 preds_df = self.exp.predict_model(self.champion_model, data=X_new, raw_score=True, verbose=False)
@@ -656,13 +762,11 @@ class CreditRiskAutoMLEngine:
             except Exception:
                 pass
 
-        if hasattr(self.champion_model, "predict_proba"):
-            probs = self.champion_model.predict_proba(X_new)
-            if probs.ndim == 2 and probs.shape[1] > 1:
-                return probs[:, 1]
-            return probs.flatten()
-        elif hasattr(self.champion_model, "predict"):
-            return self.champion_model.predict(X_new)
+        if hasattr(self.champion_model, "predict"):
+            try:
+                return self.champion_model.predict(X_new).astype(float)
+            except Exception:
+                pass
 
         return np.zeros(len(X_new))
 

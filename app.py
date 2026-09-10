@@ -254,9 +254,31 @@ with tab_engine:
         
         sample_csv = (
             "borrower_id,borrower_type,loan_no,loan_date,due_date,payoff_date,tenure_days,amount,default_flag,country_code\n"
-            "CUST-10492,Retail,LN-88102,2025-03-14,2025-04-14,2025-04-14,30,50000,1,KEN\n"
-            "CUST-20831,SME,LN-88103,2025-03-15,2025-04-15,2025-04-10,30,120000,0,KEN\n"
-            "CUST-30119,Microfinance,LN-88104,2025-03-16,2025-04-16,2025-04-16,30,25000,0,KEN\n"
+            "CUST-10492,Retail,LN-88101,2025-01-10,2025-02-10,2025-02-10,30,45000,0,KEN\n"
+            "CUST-10493,Retail,LN-88102,2025-01-14,2025-02-14,2025-02-28,30,50000,1,KEN\n"
+            "CUST-20831,SME,LN-88103,2025-01-15,2025-02-15,2025-02-10,30,120000,0,KEN\n"
+            "CUST-30119,Microfinance,LN-88104,2025-01-16,2025-02-16,2025-02-16,30,25000,0,KEN\n"
+            "CUST-10494,Retail,LN-88105,2025-01-20,2025-03-20,2025-03-15,60,75000,0,KEN\n"
+            "CUST-20832,SME,LN-88106,2025-01-22,2025-04-22,2025-04-20,90,150000,0,KEN\n"
+            "CUST-30120,Microfinance,LN-88107,2025-01-25,2025-02-25,2025-03-10,30,35000,1,KEN\n"
+            "CUST-10495,Retail,LN-88108,2025-02-01,2025-08-01,2025-07-28,180,80000,0,KEN\n"
+            "CUST-20833,SME,LN-88109,2025-02-05,2026-02-05,2026-02-01,360,200000,0,KEN\n"
+            "CUST-30121,Microfinance,LN-88110,2025-02-10,2025-03-10,2025-03-20,30,15000,1,KEN\n"
+            "CUST-10496,Retail,LN-88111,2025-02-12,2025-03-12,2025-03-10,30,60000,0,KEN\n"
+            "CUST-20834,SME,LN-88112,2025-02-14,2025-04-14,2025-04-10,60,110000,0,KEN\n"
+            "CUST-30122,Microfinance,LN-88113,2025-02-15,2025-03-30,2025-03-25,45,45000,0,KEN\n"
+            "CUST-10497,Retail,LN-88114,2025-02-18,2025-03-18,2025-04-05,30,30000,1,KEN\n"
+            "CUST-20835,SME,LN-88115,2025-02-20,2025-05-20,2025-05-18,90,180000,0,KEN\n"
+            "CUST-30123,Microfinance,LN-88116,2025-02-22,2025-03-22,2025-03-22,30,20000,0,KEN\n"
+            "CUST-10498,Retail,LN-88117,2025-02-25,2025-04-25,2025-04-20,60,95000,0,KEN\n"
+            "CUST-20836,SME,LN-88118,2025-03-01,2025-06-01,2025-06-15,90,135000,1,KEN\n"
+            "CUST-30124,Microfinance,LN-88119,2025-03-02,2025-04-02,2025-04-02,30,40000,0,KEN\n"
+            "CUST-10499,Retail,LN-88120,2025-03-05,2025-09-05,2025-09-01,180,65000,0,KEN\n"
+            "CUST-20837,SME,LN-88121,2025-03-08,2025-04-08,2025-04-05,30,85000,0,KEN\n"
+            "CUST-30125,Microfinance,LN-88122,2025-03-10,2025-04-10,2025-04-22,30,18000,1,KEN\n"
+            "CUST-10500,Retail,LN-88123,2025-03-12,2025-04-12,2025-04-10,30,55000,0,KEN\n"
+            "CUST-20838,SME,LN-88124,2025-03-14,2025-05-14,2025-05-10,60,160000,0,KEN\n"
+            "CUST-30126,Microfinance,LN-88125,2025-03-15,2025-04-15,2025-04-15,30,32000,0,KEN\n"
         )
         st.download_button(
             label="⬇️ Download Sample Credit Panel CSV",
@@ -610,7 +632,7 @@ with tab_engine:
     # SECTION 3: TABFM & PYCARET AUTOML ENGINE & DISPATCHER
     # ==============================================================================
     if st.session_state.layers_applied:
-        st.subheader("🤖 3. TabFM & PyCaret AutoML Engine")
+        st.subheader("🤖 3. PyCaret & TabFM AutoML Engine")
 
         col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
 
@@ -668,7 +690,7 @@ with tab_engine:
 
         with col_cfg3:
             st.markdown("**Engine Execution**")
-            if st.button("🚀 Run TabFM & AutoML Pipeline", type="primary", width='stretch', help="Trains LightGBM, XGBoost, CatBoost, TabFM, and candidate models via 5-Fold Stratified Cross-Validation."):
+            if st.button("🚀 Run PyCaret & AutoML Pipeline", type="primary", width='stretch', help="Trains PyCaret 3.x candidate classifiers with automated cross-validation, hyperparameter tuning, and soft-voting ensembling."):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -676,19 +698,23 @@ with tab_engine:
                     progress_bar.progress(pct)
                     status_text.markdown(f"**Status:** {msg}")
 
-                with st.spinner("Benchmarking TabFM, LightGBM, XGBoost, CatBoost & candidate models..."):
-                    results = run_automl_pipeline(
-                        st.session_state.final_layered_df,
-                        optimize_metric=optimize_metric,
-                        tune_hyperparams=tune_toggle,
-                        create_ensemble=ensemble_toggle,
-                        progress_callback=update_progress
-                    )
+                try:
+                    with st.spinner("Benchmarking candidate models via AutoML Engine..."):
+                        results = run_automl_pipeline(
+                            st.session_state.final_layered_df,
+                            optimize_metric=optimize_metric,
+                            tune_hyperparams=tune_toggle,
+                            create_ensemble=ensemble_toggle,
+                            progress_callback=update_progress
+                        )
 
-                st.session_state.automl_results = results
-                st.session_state.training_completed = True
-                status_text.success("🎉 AutoML Pipeline Completed Successfully!")
-                st.rerun()
+                    st.session_state.automl_results = results
+                    st.session_state.training_completed = True
+                    status_text.success("🎉 AutoML Pipeline Completed Successfully!")
+                    st.rerun()
+                except Exception as e:
+                    status_text.error(f"❌ AutoML Execution Error: {str(e)}")
+                    st.exception(e)
 
             with st.popover("ℹ️ What is TabFM (Foundation Model)?"):
                 st.markdown("""
@@ -1516,6 +1542,15 @@ with tab_sources:
 
 if __name__ == "__main__":
     import sys
+    import os
+
+    # Auto-relaunch into Python 3.10 virtual environment (.venv) if invoked under Python 3.12+ (for PyCaret compatibility)
+    venv_python = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv", "Scripts", "python.exe")
+    if sys.version_info >= (3, 12) and os.path.exists(venv_python) and sys.executable.lower() != venv_python.lower():
+        import subprocess
+        cmd = [venv_python, os.path.abspath(__file__)] + sys.argv[1:]
+        sys.exit(subprocess.call(cmd))
+
     try:
         from streamlit.web import cli as stcli
     except ImportError:
