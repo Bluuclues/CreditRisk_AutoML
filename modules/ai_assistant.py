@@ -19,6 +19,7 @@ import os
 import json
 import urllib.request
 import urllib.error
+import ssl
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -52,11 +53,20 @@ class OllamaClient:
             "ngrok-skip-browser-warning": "true"
         }
 
+    def _ssl_context(self, url: str) -> Optional[ssl.SSLContext]:
+        if url.startswith("https://"):
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+        return None
+
     def _get(self, path: str, timeout: Optional[int] = None) -> Dict[str, Any]:
         url = self.base_url + path
         req = urllib.request.Request(url, headers=self._headers(), method="GET")
+        ctx = self._ssl_context(url)
         try:
-            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout, context=ctx) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except Exception:
             # Automatic fallback between 127.0.0.1 and localhost
@@ -66,8 +76,10 @@ class OllamaClient:
             elif "localhost" in self.base_url:
                 alt_base = self.base_url.replace("localhost", "127.0.0.1")
             if alt_base:
-                alt_req = urllib.request.Request(alt_base + path, headers=self._headers(), method="GET")
-                with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout) as resp:
+                alt_url = alt_base + path
+                alt_req = urllib.request.Request(alt_url, headers=self._headers(), method="GET")
+                alt_ctx = self._ssl_context(alt_url)
+                with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout, context=alt_ctx) as resp:
                     self.base_url = alt_base
                     return json.loads(resp.read().decode("utf-8"))
             raise
@@ -76,8 +88,9 @@ class OllamaClient:
         url = self.base_url + path
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=self._headers(), method="POST")
+        ctx = self._ssl_context(url)
         try:
-            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout, context=ctx) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except Exception:
             alt_base = None
@@ -86,13 +99,15 @@ class OllamaClient:
             elif "localhost" in self.base_url:
                 alt_base = self.base_url.replace("localhost", "127.0.0.1")
             if alt_base:
-                alt_req = urllib.request.Request(alt_base + path, data=data, headers=self._headers(), method="POST")
-                with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout) as resp:
+                alt_url = alt_base + path
+                alt_req = urllib.request.Request(alt_url, data=data, headers=self._headers(), method="POST")
+                alt_ctx = self._ssl_context(alt_url)
+                with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout, context=alt_ctx) as resp:
                     self.base_url = alt_base
                     return json.loads(resp.read().decode("utf-8"))
             raise
 
-    def list_models(self, timeout: int = 5) -> List[str]:
+    def list_models(self, timeout: int = 15) -> List[str]:
         try:
             data = self._get("/api/tags", timeout=timeout)
             self.last_error = ""
@@ -102,7 +117,7 @@ class OllamaClient:
             return []
 
     def available(self) -> bool:
-        return bool(self.list_models(timeout=5))
+        return bool(self.list_models(timeout=15))
 
     def resolve_model(self) -> str:
         """Returns the configured model, or auto-detects the first sensible local model."""

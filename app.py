@@ -1266,7 +1266,7 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                     st.button("🔄 Test / Refresh", key="recheck_ollama", width='stretch')
 
             _oc = OllamaClient(base_url=ollama_base.strip())
-            _available_models = _oc.list_models(timeout=5)
+            _available_models = _oc.list_models(timeout=15)
 
             if _available_models:
                 default_idx = 0
