@@ -1249,7 +1249,8 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                 with cfg_col1:
                     ollama_base = st.text_input(
                         "Ollama server URL",
-                        value=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+                        value=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+                        help="Default is http://127.0.0.1:11434 for local sessions. If deployed on Streamlit Cloud, enter your public tunnel URL (e.g., via ngrok or cloudflared).",
                         key="ollama_base",
                     )
                 with cfg_col2:
@@ -1258,7 +1259,7 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                     st.button("🔄 Test / Refresh", key="recheck_ollama", width='stretch')
 
             _oc = OllamaClient(base_url=ollama_base.strip())
-            _available_models = _oc.list_models(timeout=2)
+            _available_models = _oc.list_models(timeout=5)
 
             if _available_models:
                 default_idx = 0
@@ -1280,7 +1281,11 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                 st.caption(f"🟢 **Ollama connected** — model `{selected_model}`. Free-form questions are interpreted locally via local LLM.")
             else:
                 ai_llm = None
-                st.caption(f"🟡 **Ollama not detected** at `{ollama_base.strip()}` — using the built-in offline engine. Start `ollama serve` and pull a model to enable free-form LLM answers.")
+                st.caption(
+                    f"🟡 **Ollama not detected** at `{ollama_base.strip()}` — using the deterministic offline analytical engine.\n\n"
+                    f"* **Running locally?** Make sure `ollama serve` is running in your terminal and try `http://127.0.0.1:11434`.\n"
+                    f"* **Running on Streamlit Cloud?** Cloud containers cannot connect to your personal PC's `localhost`. Expose Ollama with a public tunnel (e.g. `ngrok http 11434`) and paste the generated URL above."
+                )
 
             ai_df = st.session_state.final_layered_df
             ai_probs = None

@@ -34,24 +34,55 @@ class OllamaClient:
     """Minimal dependency-free client for a local Ollama server (no `requests` needed)."""
 
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None, timeout: int = 120):
-        self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434").rstrip("/")
+        url = (base_url or os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434").rstrip("/")
+        # On Windows, http://127.0.0.1 avoids a 2-second IPv6 resolution lag that happens with localhost
+        if "localhost" in url:
+            url = url.replace("localhost", "127.0.0.1")
+        self.base_url = url
         self.model = (model or os.getenv("OLLAMA_MODEL") or "").strip()
         self.timeout = timeout
 
     def _get(self, path: str, timeout: Optional[int] = None) -> Dict[str, Any]:
         url = self.base_url + path
         req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            # Automatic fallback between 127.0.0.1 and localhost
+            alt_base = None
+            if "127.0.0.1" in self.base_url:
+                alt_base = self.base_url.replace("127.0.0.1", "localhost")
+            elif "localhost" in self.base_url:
+                alt_base = self.base_url.replace("localhost", "127.0.0.1")
+            if alt_base:
+                alt_req = urllib.request.Request(alt_base + path, method="GET")
+                with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout) as resp:
+                    self.base_url = alt_base
+                    return json.loads(resp.read().decode("utf-8"))
+            raise
 
     def _post(self, path: str, payload: Dict[str, Any], timeout: Optional[int] = None) -> Dict[str, Any]:
         url = self.base_url + path
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            alt_base = None
+            if "127.0.0.1" in self.base_url:
+                alt_base = self.base_url.replace("127.0.0.1", "localhost")
+            elif "localhost" in self.base_url:
+                alt_base = self.base_url.replace("localhost", "127.0.0.1")
+            if alt_base:
+                alt_req = urllib.request.Request(alt_base + path, data=data, headers={"Content-Type": "application/json"}, method="POST")
+                with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout) as resp:
+                    self.base_url = alt_base
+                    return json.loads(resp.read().decode("utf-8"))
+            raise
 
-    def list_models(self, timeout: int = 3) -> List[str]:
+    def list_models(self, timeout: int = 5) -> List[str]:
         try:
             data = self._get("/api/tags", timeout=timeout)
             return [m.get("name", "") for m in data.get("models", []) if m.get("name")]
@@ -59,7 +90,7 @@ class OllamaClient:
             return []
 
     def available(self) -> bool:
-        return bool(self.list_models(timeout=3))
+        return bool(self.list_models(timeout=5))
 
     def resolve_model(self) -> str:
         """Returns the configured model, or auto-detects the first sensible local model."""
