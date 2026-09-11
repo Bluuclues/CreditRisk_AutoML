@@ -42,9 +42,17 @@ class OllamaClient:
         self.model = (model or os.getenv("OLLAMA_MODEL") or "").strip()
         self.timeout = timeout
 
+    def _headers(self) -> Dict[str, str]:
+        return {
+            "Content-Type": "application/json",
+            "User-Agent": "CreditRiskAutoML-Copilot/1.0",
+            "bypass-tunnel-reminder": "true",
+            "ngrok-skip-browser-warning": "true"
+        }
+
     def _get(self, path: str, timeout: Optional[int] = None) -> Dict[str, Any]:
         url = self.base_url + path
-        req = urllib.request.Request(url, method="GET")
+        req = urllib.request.Request(url, headers=self._headers(), method="GET")
         try:
             with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
@@ -56,7 +64,7 @@ class OllamaClient:
             elif "localhost" in self.base_url:
                 alt_base = self.base_url.replace("localhost", "127.0.0.1")
             if alt_base:
-                alt_req = urllib.request.Request(alt_base + path, method="GET")
+                alt_req = urllib.request.Request(alt_base + path, headers=self._headers(), method="GET")
                 with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout) as resp:
                     self.base_url = alt_base
                     return json.loads(resp.read().decode("utf-8"))
@@ -65,7 +73,7 @@ class OllamaClient:
     def _post(self, path: str, payload: Dict[str, Any], timeout: Optional[int] = None) -> Dict[str, Any]:
         url = self.base_url + path
         data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+        req = urllib.request.Request(url, data=data, headers=self._headers(), method="POST")
         try:
             with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
@@ -76,7 +84,7 @@ class OllamaClient:
             elif "localhost" in self.base_url:
                 alt_base = self.base_url.replace("localhost", "127.0.0.1")
             if alt_base:
-                alt_req = urllib.request.Request(alt_base + path, data=data, headers={"Content-Type": "application/json"}, method="POST")
+                alt_req = urllib.request.Request(alt_base + path, data=data, headers=self._headers(), method="POST")
                 with urllib.request.urlopen(alt_req, timeout=timeout or self.timeout) as resp:
                     self.base_url = alt_base
                     return json.loads(resp.read().decode("utf-8"))
