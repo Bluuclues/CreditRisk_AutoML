@@ -41,6 +41,7 @@ class OllamaClient:
         self.base_url = url
         self.model = (model or os.getenv("OLLAMA_MODEL") or "").strip()
         self.timeout = timeout
+        self.last_error = ""
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -93,8 +94,10 @@ class OllamaClient:
     def list_models(self, timeout: int = 5) -> List[str]:
         try:
             data = self._get("/api/tags", timeout=timeout)
+            self.last_error = ""
             return [m.get("name", "") for m in data.get("models", []) if m.get("name")]
-        except Exception:
+        except Exception as e:
+            self.last_error = str(e)
             return []
 
     def available(self) -> bool:

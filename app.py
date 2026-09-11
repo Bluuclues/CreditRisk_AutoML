@@ -1281,10 +1281,11 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                 st.caption(f"🟢 **Ollama connected** — model `{selected_model}`. Free-form questions are interpreted locally via local LLM.")
             else:
                 ai_llm = None
+                err_hint = f"\n\n**Error details:** `{_oc.last_error}`" if _oc.last_error else ""
                 st.caption(
-                    f"🟡 **Ollama not detected** at `{ollama_base.strip()}` — using the deterministic offline analytical engine.\n\n"
-                    f"* **Running locally?** Make sure `ollama serve` is running in your terminal and try `http://127.0.0.1:11434`.\n"
-                    f"* **Running on Streamlit Cloud?** Cloud containers cannot connect to your personal PC's `localhost`. Expose Ollama with a public tunnel (e.g. `ngrok http 11434`) and paste the generated URL above."
+                    f"🟡 **Ollama not detected** at `{ollama_base.strip()}`{err_hint} — using the deterministic offline analytical engine.\n\n"
+                    f"* **Tunneling from your PC?** Ensure Ollama was started with `OLLAMA_ORIGINS=*` so it doesn't block tunnel traffic with 403 Forbidden.\n"
+                    f"* **Running locally?** Try `http://127.0.0.1:11434`."
                 )
 
             ai_df = st.session_state.final_layered_df
