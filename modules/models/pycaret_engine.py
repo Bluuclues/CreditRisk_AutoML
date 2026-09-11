@@ -78,7 +78,7 @@ class TabFMClassifier(ClassifierMixin, BaseEstimator):
         activation: str = 'relu',
         alpha: float = 0.001,
         learning_rate_init: float = 0.005,
-        max_iter: int = 150,
+        max_iter: int = 80,
         random_state: int = 42
     ):
         self.hidden_layer_sizes = hidden_layer_sizes
@@ -245,23 +245,48 @@ class CreditRiskAutoMLEngine:
         return self._run_gbdt_automl(data, progress_callback)
 
     def _run_pycaret(self, data: pd.DataFrame, progress_callback: Optional[callable]) -> Dict[str, Any]:
-        """Executes native PyCaret 3.x experiment stream."""
+        """Executes native PyCaret 3.x experiment stream with optimized interactive latency."""
         if progress_callback:
             progress_callback(10, f"Initializing PyCaret 3.x ({self.task_type.capitalize()})...")
 
+        n_rows = len(data)
+
         if self.task_type == "classification":
+            min_class = int(data[self.config.target_col].value_counts().min()) if self.config.target_col in data.columns else 2
+            
+            # Adaptive CV folds for fast interactive responsiveness
+            if min_class < 2:
+                eff_folds = 2
+            elif n_rows > 300:
+                eff_folds = min(3, min_class)
+            else:
+                eff_folds = min(self.config.cv_folds, min_class)
+            eff_folds = max(2, eff_folds)
+
+            # For large portfolios (>3,000 records), benchmark candidate models on a stratified representative slice
+            if n_rows > 3000:
+                from sklearn.model_selection import train_test_split
+                bench_data, _ = train_test_split(
+                    data,
+                    train_size=min(3000, n_rows),
+                    stratify=data[self.config.target_col],
+                    random_state=self.config.session_id
+                )
+            else:
+                bench_data = data
+
             self.exp = ClassificationExperiment()
             self.exp.setup(
-                data=data,
+                data=bench_data,
                 target=self.config.target_col,
                 session_id=self.config.session_id,
-                fold=min(self.config.cv_folds, max(2, int(data[self.config.target_col].value_counts().min()))) if int(data[self.config.target_col].value_counts().min()) >= 2 else 2,
+                fold=eff_folds,
                 fix_imbalance=False,
                 verbose=False
             )
 
             if progress_callback:
-                progress_callback(35, "Benchmarking PyCaret classifiers (LightGBM, XGBoost, CatBoost, RF, ET, LR)...")
+                progress_callback(30, "Benchmarking PyCaret classifiers (XGBoost, CatBoost, RF, ET, LR)...")
 
             metric_map = {
                 "PR-AUC": "AUC",
@@ -274,9 +299,19 @@ class CreditRiskAutoMLEngine:
             }
             pycaret_metric = metric_map.get(self.config.optimize_metric, "AUC")
 
+            # Curate fast, high-performing credit risk candidate algorithms (filter out heavy O(N^3) models)
+            avail_models = self.exp.models().index.tolist()
+            priority_candidates = ['xgboost', 'catboost', 'rf', 'et', 'lr', 'ada', 'gbc', 'nb']
+            selected_candidates = [m for m in priority_candidates if m in avail_models]
+            if not selected_candidates:
+                selected_candidates = None
+
             self.best_models = self.exp.compare_models(
+                include=selected_candidates,
                 n_select=self.config.top_n_models,
                 sort=pycaret_metric,
+                fold=eff_folds,
+                budget_time=1.5,
                 verbose=False
             )
             
@@ -313,10 +348,10 @@ class CreditRiskAutoMLEngine:
 
             # Benchmark TabFM (Tabular Foundation Model) directly within PyCaret
             if progress_callback:
-                progress_callback(50, "Evaluating TabFM (Tabular Foundation Model) in PyCaret...")
+                progress_callback(55, "Evaluating TabFM (Tabular Foundation Model) in PyCaret...")
             try:
                 tabfm_inst = TabFMClassifier(random_state=self.config.session_id)
-                tabfm_model = self.exp.create_model(tabfm_inst, verbose=False)
+                tabfm_model = self.exp.create_model(tabfm_inst, fold=eff_folds, verbose=False)
                 raw_tabfm_lb = self.exp.pull()
                 
                 if isinstance(raw_tabfm_lb, pd.DataFrame) and not raw_tabfm_lb.empty:
@@ -353,12 +388,14 @@ class CreditRiskAutoMLEngine:
 
             if self.config.tune_hyperparameters and self.best_models:
                 if progress_callback:
-                    progress_callback(60, "Tuning hyperparameters of top candidate model...")
+                    progress_callback(68, "Tuning hyperparameters of champion candidate model...")
                 try:
                     tuned_model = self.exp.tune_model(
                         self.best_models[0], 
                         optimize=pycaret_metric, 
-                        n_iter=10, 
+                        fold=eff_folds,
+                        n_iter=4, 
+                        budget_time=0.5,
                         verbose=False
                     )
                     selected_model = tuned_model
@@ -368,11 +405,12 @@ class CreditRiskAutoMLEngine:
             is_blended = False
             if self.config.create_ensemble and len(self.best_models) >= 2:
                 if progress_callback:
-                    progress_callback(75, "Constructing soft-voting ensemble...")
+                    progress_callback(80, "Constructing soft-voting ensemble...")
                 try:
                     ensemble = self.exp.blend_models(
                         estimator_list=self.best_models[:2], 
                         optimize=pycaret_metric,
+                        fold=eff_folds,
                         verbose=False
                     )
                     selected_model = ensemble
@@ -385,24 +423,46 @@ class CreditRiskAutoMLEngine:
             else:
                 self.champion_name = self._model_display_name(selected_model)
 
+            if progress_callback:
+                progress_callback(90, "Finalizing champion model pipeline...")
+
+            # If a subset was used for candidate benchmarking, re-setup experiment on full dataset for model finalization
+            if n_rows > 3000:
+                self.exp.setup(
+                    data=data,
+                    target=self.config.target_col,
+                    session_id=self.config.session_id,
+                    fold=eff_folds,
+                    fix_imbalance=False,
+                    verbose=False
+                )
+
             self.champion_model = self.exp.finalize_model(selected_model)
 
         else:
+            eff_folds = 3 if n_rows > 300 else max(2, self.config.cv_folds)
             self.exp = RegressionExperiment()
             self.exp.setup(
                 data=data,
                 target=self.config.target_col,
                 session_id=self.config.session_id,
-                fold=self.config.cv_folds,
+                fold=eff_folds,
                 verbose=False
             )
 
             if progress_callback:
                 progress_callback(40, "Benchmarking PyCaret regression models...")
 
+            avail_reg = self.exp.models().index.tolist()
+            priority_reg = ['xgboost', 'catboost', 'rf', 'et', 'lr', 'ridge', 'gbr', 'ada']
+            selected_reg = [m for m in priority_reg if m in avail_reg]
+
             self.best_models = self.exp.compare_models(
+                include=selected_reg if selected_reg else None,
                 n_select=self.config.top_n_models,
                 sort="R2",
+                fold=eff_folds,
+                budget_time=1.5,
                 verbose=False
             )
             if not isinstance(self.best_models, list):
@@ -420,8 +480,7 @@ class CreditRiskAutoMLEngine:
             "champion_model": self.champion_model,
             "champion_name": self.champion_name,
             "leaderboard": self.leaderboard,
-            "top_models": self.best_models,
-            "experiment": self.exp,
+            "best_models": self.best_models,
             "engine_name": "PyCaret 3.x"
         }
 

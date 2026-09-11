@@ -36,9 +36,15 @@ def run_automl_pipeline(
     # Compute predictions on dataset
     X_matrix = df.drop(columns=[c for c in ["default_flag", "session_id", "borrower_id", "loan_no", "loan_date", "due_date", "payoff_date", "country_code"] if c in df.columns])
     
+    if progress_callback:
+        progress_callback(93, "Generating calibrated portfolio default probability scoring...")
+
     predicted_probs = engine.predict_probabilities(X_matrix)
 
     # Initialize SHAP explainer
+    if progress_callback:
+        progress_callback(96, "Fitting TreeSHAP global & local explainability engine...")
+
     explainer = None
     try:
         sample_subset = X_matrix.head(min(200, len(X_matrix)))
