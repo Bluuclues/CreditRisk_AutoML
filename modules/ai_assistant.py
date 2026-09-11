@@ -32,6 +32,7 @@ _TARGET = "default_flag"
 
 class OllamaClient:
     """Minimal dependency-free client for a local Ollama server (no `requests` needed)."""
+    last_error: str = ""
 
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None, timeout: int = 120):
         url = (base_url or os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434").rstrip("/")

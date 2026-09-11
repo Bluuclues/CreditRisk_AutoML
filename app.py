@@ -1236,10 +1236,17 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                 """)
 
         try:
+            import importlib
+            import modules.ai_assistant
+            importlib.reload(modules.ai_assistant)
             from modules.ai_assistant import NLQueryEngine, OllamaClient
             _HAS_AI = True
         except Exception:
-            _HAS_AI = False
+            try:
+                from modules.ai_assistant import NLQueryEngine, OllamaClient
+                _HAS_AI = True
+            except Exception:
+                _HAS_AI = False
 
         if not _HAS_AI:
             st.warning("AI Analyst module unavailable (`modules/ai_assistant.py`).")
@@ -1281,7 +1288,8 @@ print(new_loans[["borrower_id", "predicted_pd"]].head())
                 st.caption(f"🟢 **Ollama connected** — model `{selected_model}`. Free-form questions are interpreted locally via local LLM.")
             else:
                 ai_llm = None
-                err_hint = f"\n\n**Error details:** `{_oc.last_error}`" if _oc.last_error else ""
+                last_err = getattr(_oc, "last_error", None)
+                err_hint = f"\n\n**Error details:** `{last_err}`" if last_err else ""
                 st.caption(
                     f"🟡 **Ollama not detected** at `{ollama_base.strip()}`{err_hint} — using the deterministic offline analytical engine.\n\n"
                     f"* **Tunneling from your PC?** Ensure Ollama was started with `OLLAMA_ORIGINS=*` so it doesn't block tunnel traffic with 403 Forbidden.\n"
