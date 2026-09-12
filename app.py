@@ -220,78 +220,10 @@ def reset_portfolio_state():
         pass
 
 
-def balance_portfolio_by_defaulter_pct(
-    df: pd.DataFrame, 
-    target_pct: Optional[float], 
-    random_state: int = 42
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    """
-    Adjusts the portfolio DataFrame so that defaulters (default_flag == 1) make up 
-    exactly target_pct% of the analytical dataset, cutting off excess records.
-    If target_pct is None or <= 0 or >= 100, returns the dataset untouched.
-    """
-    if 'default_flag' not in df.columns:
-        return df, {
-            "original_total": len(df), "original_def": 0, "original_non_def": len(df),
-            "kept_def": 0, "kept_non_def": len(df), "kept_total": len(df),
-            "cut_off": 0, "target_pct": 0.0, "actual_pct": 0.0
-        }
-
-    df_clean = df.copy()
-    df_clean['default_flag'] = pd.to_numeric(df_clean['default_flag'], errors='coerce').fillna(0).astype(int)
-
-    defaulters = df_clean[df_clean['default_flag'] == 1]
-    non_defaulters = df_clean[df_clean['default_flag'] == 0]
-
-    n_def = len(defaulters)
-    n_non_def = len(non_defaulters)
-    n_total = len(df_clean)
-    orig_pct = (n_def / n_total * 100.0) if n_total > 0 else 0.0
-
-    if target_pct is None or target_pct <= 0 or target_pct >= 100 or n_def == 0 or n_non_def == 0:
-        return df_clean, {
-            "original_total": n_total,
-            "original_def": n_def,
-            "original_non_def": n_non_def,
-            "kept_def": n_def,
-            "kept_non_def": n_non_def,
-            "kept_total": n_total,
-            "cut_off": 0,
-            "target_pct": round(target_pct if target_pct is not None else orig_pct, 1),
-            "actual_pct": round(orig_pct, 2)
-        }
-
-    p = float(target_pct) / 100.0
-
-    # Desired equation: kept_def / (kept_def + kept_non_def) = p
-    # Try keeping all defaulters and cutting off excess non-defaulters:
-    needed_non_def = int(round(n_def * (1.0 - p) / p))
-
-    if 0 < needed_non_def <= n_non_def:
-        kept_def_df = defaulters
-        kept_non_def_df = non_defaulters.sample(n=needed_non_def, random_state=random_state)
-    else:
-        # If target default % is higher than available non-defaulters can support or inverted:
-        needed_def = int(round(n_non_def * p / (1.0 - p)))
-        needed_def = max(1, min(needed_def, n_def))
-        kept_def_df = defaulters.sample(n=needed_def, random_state=random_state)
-        kept_non_def_df = non_defaulters
-
-    balanced_df = pd.concat([kept_def_df, kept_non_def_df]).sort_index()
-    actual_pct = (len(kept_def_df) / len(balanced_df) * 100.0) if len(balanced_df) > 0 else 0.0
-
-    stats = {
-        "original_total": n_total,
-        "original_def": n_def,
-        "original_non_def": n_non_def,
-        "kept_def": len(kept_def_df),
-        "kept_non_def": len(kept_non_def_df),
-        "kept_total": len(balanced_df),
-        "cut_off": n_total - len(balanced_df),
-        "target_pct": round(target_pct, 1),
-        "actual_pct": round(actual_pct, 2)
-    }
-    return balanced_df, stats
+from modules.portfolio_balancer import (
+    generate_automated_segments, 
+    balance_portfolio_by_defaulter_pct
+)
 
 
 init_single_page_state()
@@ -434,7 +366,7 @@ with tab_engine:
         is_valid = False
 
         with col_u2:
-            st.subheader("2. Defaulter Composition & Cutoff")
+            st.subheader("2. Automated Segmentation & Defaulter Cutoff")
             if raw_df is not None:
                 is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(raw_df)
                 st.session_state.validation_messages = msgs
@@ -444,6 +376,9 @@ with tab_engine:
                         st.error(m)
                     target_pct = None
                 else:
+                    # Generate automated portfolio segmentation (Ticket size tertiles, tenor, categories)
+                    clean_df, seg_meta = generate_automated_segments(clean_df)
+
                     n_tot = len(clean_df)
                     n_def = int(clean_df['default_flag'].sum())
                     n_non_def = n_tot - n_def
@@ -451,22 +386,78 @@ with tab_engine:
 
                     st.markdown(f"""
                     <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px;">
-                        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;">Uploaded Portfolio Breakdown:</span><br>
+                        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;">Uploaded Portfolio Overview:</span><br>
                         <b>{n_tot:,} Total Records</b> &nbsp;|&nbsp; 
                         <span style="color: #ef4444; font-weight: 700;">{n_def:,} Defaulters</span> &nbsp;|&nbsp; 
                         <span style="color: #22c55e; font-weight: 700;">{n_non_def:,} Performing Loans</span> &nbsp;|&nbsp; 
-                        <b>{orig_pct:.1f}% Original Default Rate</b>
+                        <b>{orig_pct:.1f}% Overall Default Rate</b>
                     </div>
                     """, unsafe_allow_html=True)
 
+                    available_dims = list(seg_meta["dimensions"].keys())
+                    if available_dims:
+                        default_dim_idx = available_dims.index(seg_meta["default_dimension"]) if seg_meta["default_dimension"] in available_dims else 0
+                        selected_dim = st.selectbox(
+                            "🏷️ Portfolio Segmentation Dimension:",
+                            options=available_dims,
+                            index=default_dim_idx,
+                            help="Select the portfolio dimension used for automated segmentation breakdown and stratified sampling."
+                        )
+                        active_dim_info = seg_meta["dimensions"][selected_dim]
+                        active_seg_col = active_dim_info["col"]
+                        active_breakdown = active_dim_info["breakdown"]
+
+                        # Render segment breakdown cards
+                        seg_cols = st.columns(min(len(active_breakdown), 4))
+                        for i, s in enumerate(active_breakdown):
+                            col_target = seg_cols[i % len(seg_cols)]
+                            with col_target:
+                                st.markdown(f"""
+                                <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; text-align: center;">
+                                    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">{s['segment']}</div>
+                                    <div style="font-size: 16px; font-weight: 800; color: #f8fafc; margin: 2px 0;">{s['count']:,} <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">loans</span></div>
+                                    <div style="font-size: 11px; color: #ef4444; font-weight: 700;">{s['defaulters']} def ({s['default_rate']:.1f}%)</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        # Scope selector: All Segments vs Focus on single segment
+                        scope_options = [f"🌐 All Segments (Stratified by {selected_dim})"] + [f"🎯 Focus on: {s['segment']}" for s in active_breakdown]
+                        selected_scope = st.selectbox(
+                            "🎯 Analysis Scope for Segmentation:",
+                            options=scope_options,
+                            index=0,
+                            help="Choose whether to analyze the full portfolio with balanced stratified representation across segments, or isolate analysis to a single segment."
+                        )
+
+                        is_focused = selected_scope.startswith("🎯 Focus on: ")
+                        if is_focused:
+                            focused_segment_name = selected_scope.replace("🎯 Focus on: ", "")
+                            working_df = clean_df[clean_df[active_seg_col] == focused_segment_name].copy()
+                            stratify_target = None
+                            scope_label = focused_segment_name
+                        else:
+                            working_df = clean_df.copy()
+                            stratify_target = active_seg_col
+                            scope_label = f"All Segments (Stratified by {selected_dim})"
+                    else:
+                        selected_dim = "None"
+                        selected_scope = "All Segments"
+                        working_df = clean_df.copy()
+                        stratify_target = None
+                        scope_label = "Full Portfolio"
+
+                    w_tot = len(working_df)
+                    w_def = int(working_df['default_flag'].sum())
+                    w_orig_pct = (w_def / w_tot * 100.0) if w_tot > 0 else 0.0
+
                     keep_all_records = st.checkbox(
-                        "Keep all records without cutoff (Analyze full dataset as-is)", 
+                        "Keep all records without cutoff (Analyze selected scope as-is)", 
                         value=False,
-                        help="Check this to bypass cutoff and evaluate 100% of uploaded records."
+                        help="Check this to bypass cutoff and evaluate 100% of records in the selected scope."
                     )
 
                     if not keep_all_records:
-                        default_slider_val = min(max(int(round(orig_pct)), 5), 50) if orig_pct > 0 else 20
+                        default_slider_val = min(max(int(round(w_orig_pct)), 5), 50) if w_orig_pct > 0 else 20
                         target_pct = st.slider(
                             "🎯 What percentage should be defaulters in the analysis? (%):",
                             min_value=1,
@@ -475,17 +466,21 @@ with tab_engine:
                             step=1,
                             help="Specifies the proportion of defaulters in the analytical dataset. Excess records will be cut off to reach this exact percentage."
                         )
-                        _, preview_stats = balance_portfolio_by_defaulter_pct(clean_df, target_pct)
+                        _, preview_stats = balance_portfolio_by_defaulter_pct(
+                            working_df, 
+                            target_pct,
+                            stratify_col=stratify_target
+                        )
                         st.markdown(f"""
                         <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 16px; margin-top: 8px;">
-                            <b style="color: #60a5fa;">✂️ Cutoff Preview:</b> Retaining <b>{preview_stats['kept_total']:,} records</b> 
+                            <b style="color: #60a5fa;">✂️ Cutoff Preview [{scope_label}]:</b> Retaining <b>{preview_stats['kept_total']:,} records</b> 
                             ({preview_stats['kept_def']:,} Defaulters + {preview_stats['kept_non_def']:,} Performing = <b>{preview_stats['actual_pct']:.1f}% Defaulters</b>).<br>
                             <span style="color: #f59e0b; font-weight: 600;">Cutting off {preview_stats['cut_off']:,} excess records</span> to achieve the target ratio.
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         target_pct = None
-                        st.info(f"ℹ️ Full portfolio retained: {n_tot:,} records evaluated at the natural {orig_pct:.1f}% default rate.")
+                        st.info(f"ℹ️ Full dataset retained [{scope_label}]: {w_tot:,} records evaluated at the natural {w_orig_pct:.1f}% default rate.")
 
             else:
                 st.info("👈 Please upload a loan panel CSV (or click 'Use Sample Panel') to configure analysis.")
@@ -513,7 +508,7 @@ with tab_engine:
 
             with cfg_col3:
                 st.markdown("**AutoML & Explainability**")
-                optimize_metric = st.selectbox("Optimization Metric:", ["PR-AUC", "ROC-AUC", "F1", "Accuracy"], index=0, help="PR-AUC is prioritized for imbalanced credit default detection.")
+                optimize_metric = st.selectbox("Optimization Metric:", ["PR-AUC", "ROC-AUC"], index=0, help="PR-AUC is prioritized for imbalanced credit default detection, while ROC-AUC measures discrimination across all decision thresholds.")
                 tune_toggle = st.checkbox("Optuna Hyperparameter Tuning", value=True)
                 ensemble_toggle = st.checkbox("Soft-Voting Ensemble (GBDT + TabFM)", value=True)
                 auto_prune_toggle = st.checkbox("Auto-prune noisy features (IV < 0.02)", value=True)
@@ -539,11 +534,15 @@ with tab_engine:
 
                 try:
                     # 1. Defaulter Ratio Balancing & Cutoff
-                    update_progress(10, "Balancing portfolio to target defaulter percentage and cutting off excess records...")
+                    update_progress(10, f"Balancing portfolio to target defaulter percentage ({'natural rate' if keep_all_records else str(target_pct) + '%'}) and cutting off excess records...")
                     balanced_df, cutoff_stats = balance_portfolio_by_defaulter_pct(
-                        clean_df, 
-                        None if keep_all_records else target_pct
+                        working_df, 
+                        None if keep_all_records else target_pct,
+                        stratify_col=stratify_target
                     )
+                    cutoff_stats["segment_dimension"] = selected_dim
+                    cutoff_stats["analysis_scope"] = scope_label
+
                     balanced_df['session_id'] = st.session_state.session_id
                     balanced_df['country_code'] = selected_country_code
                     st.session_state.primary_df = balanced_df.copy()
@@ -571,7 +570,7 @@ with tab_engine:
 
                     if auto_prune_toggle:
                         valid_features = iv_df[iv_df["Information Value (IV)"] >= 0.02]["Feature Name"].tolist() + ["default_flag"]
-                        for col in ["loan_no", "borrower_id", "session_id", "country_code", "loan_date", "due_date", "payoff_date"]:
+                        for col in ["loan_no", "borrower_id", "session_id", "country_code", "loan_date", "due_date", "payoff_date", "loan_ticket_segment", "loan_tenor_segment", "amount", "tenure_days"]:
                             if col in st.session_state.final_layered_df.columns and col not in valid_features:
                                 valid_features.append(col)
                         st.session_state.final_layered_df = st.session_state.final_layered_df[valid_features]
@@ -606,11 +605,12 @@ with tab_engine:
         col_sum_m, col_sum_r1, col_sum_r2 = st.columns([3, 1, 1])
         with col_sum_m:
             if cutoff:
+                scope_badge = f" &nbsp;|&nbsp; <b>Scope:</b> <span style='color: #60a5fa;'>{cutoff.get('analysis_scope', 'All Segments')}</span>" if 'analysis_scope' in cutoff else ""
                 st.markdown(f"""
                 <div style="background: rgba(37, 99, 235, 0.09); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 10px; padding: 12px 18px; margin-bottom: 12px;">
                     <span style="font-size: 14px; font-weight: 800; color: #3b82f6;">🎯 Portfolio Balanced & Analyzed:</span> 
-                    Retained <b>{cutoff['kept_total']:,} records</b> ({cutoff['kept_def']:,} Defaulters &nbsp;|&nbsp; {cutoff['kept_non_def']:,} Performing loans &nbsp;=&nbsp; <b>{cutoff['actual_pct']:.1f}% Defaulters</b>). 
-                    Cut off <b>{cutoff['cut_off']:,}</b> excess records from original {cutoff['original_total']:,} uploaded rows.
+                    Retained <b>{cutoff['kept_total']:,} records</b> ({cutoff['kept_def']:,} Defaulters &nbsp;|&nbsp; {cutoff['kept_non_def']:,} Performing loans &nbsp;=&nbsp; <b>{cutoff['actual_pct']:.1f}% Defaulters</b>){scope_badge}. 
+                    Cut off <b>{cutoff['cut_off']:,}</b> excess records from original {cutoff['original_total']:,} rows.
                 </div>
                 """, unsafe_allow_html=True)
             else:
@@ -760,6 +760,7 @@ with tab_engine:
             borrower_id = df['borrower_id'].iloc[idx] if 'borrower_id' in df else f"CUST-{idx+1000}"
             amount = df['amount'].iloc[idx] if 'amount' in df else 0.0
             tenure = df['tenure_days'].iloc[idx] if 'tenure_days' in df else 30
+            ticket_seg = df['loan_ticket_segment'].iloc[idx] if 'loan_ticket_segment' in df else "—"
 
             # Get Adverse Action Reasons
             if explainer is not None:
@@ -771,6 +772,7 @@ with tab_engine:
             table_rows.append({
                 "Index": idx,
                 "Borrower ID": borrower_id,
+                "Ticket Segment": ticket_seg,
                 "Principal (KES)": f"{amount:,.0f}",
                 "Tenor": f"{tenure} Days",
                 "Predicted PD": f"{pd_pct:.1f}%",
@@ -827,6 +829,7 @@ with tab_engine:
                         break
 
             county_line = f" &nbsp;|&nbsp; <b>County:</b> {county_val}" if county_val else " &nbsp;|&nbsp; <b>County:</b> <i>—</i>"
+            ticket_seg_val = get_card_field(card_row, 'loan_ticket_segment', fallback="—")
 
             rec_limit = max(10000, int(card_amt * (1.0 - (card_pd / 100.0)))) if card_amt > 0 else 0
 
@@ -845,7 +848,7 @@ with tab_engine:
                 st.markdown(f"""
                 <div class="borrower-card">
                     <div class="card-header-title">👤 BORROWER PROFILE & DECISION</div>
-                    <p><b>Borrower ID:</b> {selected_borrower_id} &nbsp;|&nbsp; <b>Jurisdiction:</b> Kenya{county_line}</p>
+                    <p><b>Borrower ID:</b> {selected_borrower_id} &nbsp;|&nbsp; <b>Jurisdiction:</b> Kenya{county_line} &nbsp;|&nbsp; <b>Segment:</b> {ticket_seg_val}</p>
                     <p><b>Requested Loan Principal:</b> KES {card_amt:,.0f} &nbsp;|&nbsp; <b>Tenor:</b> {card_tenure} Days</p>
                     <div style="margin-top: 12px; margin-bottom: 12px;">
                         <b>Predicted Default Probability (PD):</b> <span style="font-size: 20px; font-weight: 800; color: #dc2626;">{card_pd:.1f}%</span>
