@@ -169,7 +169,7 @@ def init_single_page_state():
     if 'duck_conn' not in st.session_state:
         st.session_state.duck_conn = duckdb.connect(':memory:')
     
-    # Progressive Disclosure Section Flags
+    # Workflow Flags
     if 'data_ingested' not in st.session_state:
         st.session_state.data_ingested = False
     if 'layers_applied' not in st.session_state:
@@ -178,18 +178,121 @@ def init_single_page_state():
         st.session_state.training_completed = False
 
     # Data Payloads
+    if 'raw_upload_df' not in st.session_state:
+        st.session_state.raw_upload_df = None
     if 'primary_df' not in st.session_state:
         st.session_state.primary_df = None
     if 'final_layered_df' not in st.session_state:
         st.session_state.final_layered_df = None
     if 'validation_messages' not in st.session_state:
         st.session_state.validation_messages = []
+    if 'cutoff_stats' not in st.session_state:
+        st.session_state.cutoff_stats = None
+    if 'iv_df' not in st.session_state:
+        st.session_state.iv_df = None
 
     # AutoML & XAI Payloads
     if 'automl_results' not in st.session_state:
         st.session_state.automl_results = None
     if 'selected_borrower_idx' not in st.session_state:
         st.session_state.selected_borrower_idx = 0
+
+
+def reset_portfolio_state():
+    """Wipes in-memory session, tables, and models to restart from a clean slate."""
+    st.session_state.session_id = str(uuid.uuid4())
+    st.session_state.data_ingested = False
+    st.session_state.layers_applied = False
+    st.session_state.training_completed = False
+    st.session_state.raw_upload_df = None
+    st.session_state.primary_df = None
+    st.session_state.final_layered_df = None
+    st.session_state.automl_results = None
+    st.session_state.cutoff_stats = None
+    st.session_state.iv_df = None
+    st.session_state.validation_messages = []
+    st.session_state.selected_borrower_idx = 0
+    try:
+        st.session_state.duck_conn.execute("DROP TABLE IF EXISTS ml_features")
+        st.session_state.duck_conn.execute("DROP TABLE IF EXISTS temp_df")
+        st.session_state.duck_conn.execute("DROP TABLE IF EXISTS macro_warehouse_temp")
+    except Exception:
+        pass
+
+
+def balance_portfolio_by_defaulter_pct(
+    df: pd.DataFrame, 
+    target_pct: Optional[float], 
+    random_state: int = 42
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    """
+    Adjusts the portfolio DataFrame so that defaulters (default_flag == 1) make up 
+    exactly target_pct% of the analytical dataset, cutting off excess records.
+    If target_pct is None or <= 0 or >= 100, returns the dataset untouched.
+    """
+    if 'default_flag' not in df.columns:
+        return df, {
+            "original_total": len(df), "original_def": 0, "original_non_def": len(df),
+            "kept_def": 0, "kept_non_def": len(df), "kept_total": len(df),
+            "cut_off": 0, "target_pct": 0.0, "actual_pct": 0.0
+        }
+
+    df_clean = df.copy()
+    df_clean['default_flag'] = pd.to_numeric(df_clean['default_flag'], errors='coerce').fillna(0).astype(int)
+
+    defaulters = df_clean[df_clean['default_flag'] == 1]
+    non_defaulters = df_clean[df_clean['default_flag'] == 0]
+
+    n_def = len(defaulters)
+    n_non_def = len(non_defaulters)
+    n_total = len(df_clean)
+    orig_pct = (n_def / n_total * 100.0) if n_total > 0 else 0.0
+
+    if target_pct is None or target_pct <= 0 or target_pct >= 100 or n_def == 0 or n_non_def == 0:
+        return df_clean, {
+            "original_total": n_total,
+            "original_def": n_def,
+            "original_non_def": n_non_def,
+            "kept_def": n_def,
+            "kept_non_def": n_non_def,
+            "kept_total": n_total,
+            "cut_off": 0,
+            "target_pct": round(target_pct if target_pct is not None else orig_pct, 1),
+            "actual_pct": round(orig_pct, 2)
+        }
+
+    p = float(target_pct) / 100.0
+
+    # Desired equation: kept_def / (kept_def + kept_non_def) = p
+    # Try keeping all defaulters and cutting off excess non-defaulters:
+    needed_non_def = int(round(n_def * (1.0 - p) / p))
+
+    if 0 < needed_non_def <= n_non_def:
+        kept_def_df = defaulters
+        kept_non_def_df = non_defaulters.sample(n=needed_non_def, random_state=random_state)
+    else:
+        # If target default % is higher than available non-defaulters can support or inverted:
+        needed_def = int(round(n_non_def * p / (1.0 - p)))
+        needed_def = max(1, min(needed_def, n_def))
+        kept_def_df = defaulters.sample(n=needed_def, random_state=random_state)
+        kept_non_def_df = non_defaulters
+
+    balanced_df = pd.concat([kept_def_df, kept_non_def_df]).sort_index()
+    actual_pct = (len(kept_def_df) / len(balanced_df) * 100.0) if len(balanced_df) > 0 else 0.0
+
+    stats = {
+        "original_total": n_total,
+        "original_def": n_def,
+        "original_non_def": n_non_def,
+        "kept_def": len(kept_def_df),
+        "kept_non_def": len(kept_non_def_df),
+        "kept_total": len(balanced_df),
+        "cut_off": n_total - len(balanced_df),
+        "target_pct": round(target_pct, 1),
+        "actual_pct": round(actual_pct, 2)
+    }
+    return balanced_df, stats
+
 
 init_single_page_state()
 
@@ -287,410 +390,146 @@ with tab_engine:
             mime="text/csv"
         )
 
-    if not st.session_state.data_ingested:
-        col_s1_title, col_s1_info = st.columns([4, 1])
-        with col_s1_title:
-            st.subheader("1. Portfolio Setup & Ingestion")
-        with col_s1_info:
-            with st.popover("ℹ️ Ingestion Quality Gate & DLQ"):
-                st.markdown("""
-                ### 🛡️ Data Quality Gate & Dead-Letter Queue (DLQ)
-                
-                The `CreditRiskDataValidator` executes rigorous sanity checks on incoming loan data:
-                * **Mandatory Column Check:** Verifies `borrower_id`, `amount`, and `default_flag`.
-                * **Binary Target Cleanliness:** Checks `default_flag` $\\in \\{0, 1\\}$. Malformed or missing targets are moved to the **Dead-Letter Queue (DLQ)** to prevent corrupting model loss gradients.
-                * **Imputation & Bounding:** Missing tenors default to 30 days; non-positive principal amounts are imputed with the portfolio median.
-                """)
-        
-        country_list = list(COUNTRY_MAPPING.keys())
-        default_idx = country_list.index("Kenya") if "Kenya" in country_list else 0
-        selected_country_name = st.selectbox("Country Jurisdiction:", country_list, index=default_idx, help="Select national jurisdiction for macroeconomic and regulatory matching.")
-        selected_country_code = COUNTRY_MAPPING[selected_country_name]
+    if not st.session_state.training_completed:
+        # ==============================================================================
+        # SINGLE INTERACTION: PORTFOLIO UPLOAD, DEFAULTER CUTOFF % & AUTOML EXECUTION
+        # ==============================================================================
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 14px; padding: 22px 26px; margin-bottom: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.15);">
+            <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #60a5fa; font-weight: 700;">⚡ Unified Operational Pipeline</div>
+            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-top: 4px;">Single-Click Credit Risk AutoML Engine</div>
+            <div style="font-size: 14px; color: #94a3b8; margin-top: 6px; line-height: 1.5;">
+                Upload your borrower panel loan CSV, specify what percentage should be defaulters in the analysis to cut off excess records, and launch the complete end-to-end pipeline with one click.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        uploaded_file = st.file_uploader("Upload Panel Loan Data (.CSV)", type=["csv"], help="Upload CSV containing borrower panel repayments and default flags.")
+        col_u1, col_u2 = st.columns([1, 1], gap="large")
 
-        if uploaded_file is not None:
-            raw_df = pd.read_csv(uploaded_file)
-            
-            # Run Data Quality Gate
-            is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(raw_df)
-            st.session_state.validation_messages = msgs
+        with col_u1:
+            st.subheader("1. Upload Portfolio")
+            uploaded_file = st.file_uploader(
+                "Upload Panel Loan Data (.CSV):", 
+                type=["csv"], 
+                help="Upload CSV containing borrower panel repayments, principal amounts, tenures, and default flags."
+            )
 
-            for msg in msgs:
-                if "✅" in msg:
-                    st.success(msg)
-                elif "⚠️" in msg:
-                    st.warning(msg)
-                else:
-                    st.error(msg)
-
-            if is_valid:
-                st.dataframe(clean_df.head(3), width='stretch')
-
-                if st.button("⚡ Ingest into DuckDB Memory Store", type="primary", key="ingest_btn", help="Registers clean records into the ephemeral DuckDB in-memory analytical warehouse."):
-                    clean_df['session_id'] = st.session_state.session_id
-                    clean_df['country_code'] = selected_country_code
-
-                    st.session_state.primary_df = clean_df.copy()
-                    st.session_state.duck_conn.register('temp_df', clean_df)
-                    st.session_state.duck_conn.execute("CREATE OR REPLACE TABLE ml_features AS SELECT * FROM temp_df")
-
-                    st.session_state.data_ingested = True
-                    st.session_state.final_layered_df = clean_df.copy()
+            col_sample_btn, col_clear_btn = st.columns([1, 1])
+            with col_sample_btn:
+                if st.button("📋 Use Sample Panel (25 Loans)", width='stretch', help="Loads built-in sample loan panel for instant testing"):
+                    st.session_state.raw_upload_df = pd.read_csv(io.StringIO(sample_csv))
                     st.rerun()
+            with col_clear_btn:
+                if st.session_state.raw_upload_df is not None:
+                    if st.button("🗑️ Clear Uploaded File", width='stretch'):
+                        st.session_state.raw_upload_df = None
+                        st.session_state.validation_messages = []
+                        st.rerun()
 
-    else:
-        st.success(f"✅ Ingested {len(st.session_state.primary_df):,} records into active DuckDB memory store!")
-        col_btn1, col_btn2 = st.columns([1, 1])
-        with col_btn1:
-            if st.button("🔄 Reset Portfolio & Upload New CSV", width='stretch', help="Wipes DuckDB in-memory tables and resets session state."):
-                st.session_state.data_ingested = False
-                st.session_state.layers_applied = False
-                st.session_state.training_completed = False
-                st.session_state.primary_df = None
-                st.session_state.final_layered_df = None
-                st.session_state.automl_results = None
-                st.rerun()
-        with col_btn2:
-            baseline_csv = st.session_state.primary_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Export Clean Ingested Baseline (.CSV)",
-                data=baseline_csv,
-                file_name="kba_ingested_baseline.csv",
-                mime="text/csv",
-                width='stretch'
-            )
+            if uploaded_file is not None:
+                st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
 
-    st.write("---")
+        raw_df = st.session_state.raw_upload_df
+        clean_df = None
+        is_valid = False
 
+        with col_u2:
+            st.subheader("2. Defaulter Composition & Cutoff")
+            if raw_df is not None:
+                is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(raw_df)
+                st.session_state.validation_messages = msgs
 
-    # ==============================================================================
-    # SECTION 2: ALTERNATIVE DATA LAYERING ENGINE
-    # ==============================================================================
-    if st.session_state.data_ingested:
-        col_s2_title, col_s2_info = st.columns([4, 1])
-        with col_s2_title:
-            st.subheader("💡 2. Layer Alternative Data Streams")
-        with col_s2_info:
-            with st.popover("ℹ️ Vectorized Joins & Feature Stores"):
-                st.markdown(r"""
-                ### ⚡ DuckDB Vectorized In-Memory Joins
-                
-                * **High-Speed Columnar Execution:**  
-                  DuckDB leverages SIMD vectorized columnar query execution, joining multi-gigabyte alternative datasets in sub-millisecond RAM latency.
-                * **Dynamic Temporal & Regional Alignment:**  
-                  Features are mapped via composite left joins matching `country_code` and temporal `year`:
-                  ```sql
-                  SELECT loan.*, macro.* EXCLUDE (country_code, year)
-                  FROM ml_features loan
-                  LEFT JOIN macro_warehouse macro
-                    ON loan.country_code = macro.country_code
-                    AND loan.year = macro.year;
-                  ```
-                * **Information Value (IV) Pre-Screening:**  
-                  Signals with $IV \ge 0.10$ are retained for modeling; noisy features ($IV < 0.02$) are pruned to prevent overfitting.
-                """)
+                if not is_valid:
+                    for m in msgs:
+                        st.error(m)
+                    target_pct = None
+                else:
+                    n_tot = len(clean_df)
+                    n_def = int(clean_df['default_flag'].sum())
+                    n_non_def = n_tot - n_def
+                    orig_pct = (n_def / n_tot * 100.0) if n_tot > 0 else 0.0
 
-        available_files = [f for f in os.listdir(ALTERNATIVE_DATA_DIR) if f.endswith(('.db', '.csv'))] if os.path.exists(ALTERNATIVE_DATA_DIR) else []
-        
-        col_layer_left, col_layer_right = st.columns([2, 1])
+                    st.markdown(f"""
+                    <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px;">
+                        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;">Uploaded Portfolio Breakdown:</span><br>
+                        <b>{n_tot:,} Total Records</b> &nbsp;|&nbsp; 
+                        <span style="color: #ef4444; font-weight: 700;">{n_def:,} Defaulters</span> &nbsp;|&nbsp; 
+                        <span style="color: #22c55e; font-weight: 700;">{n_non_def:,} Performing Loans</span> &nbsp;|&nbsp; 
+                        <b>{orig_pct:.1f}% Original Default Rate</b>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-        with col_layer_left:
-            selected_layers = []
-            if available_files:
-                st.write("Select local alternative data feeds to join in RAM:")
-                for f in available_files:
-                    if st.checkbox(f"🌿 Join `{f}` (Macro GCP & County Indicators)", value=(f == 'macro_layer.db'), key=f"chk_{f}", help=f"Executes in-memory vectorized left join with {f}"):
-                        selected_layers.append(f)
+                    keep_all_records = st.checkbox(
+                        "Keep all records without cutoff (Analyze full dataset as-is)", 
+                        value=False,
+                        help="Check this to bypass cutoff and evaluate 100% of uploaded records."
+                    )
+
+                    if not keep_all_records:
+                        default_slider_val = min(max(int(round(orig_pct)), 5), 50) if orig_pct > 0 else 20
+                        target_pct = st.slider(
+                            "🎯 What percentage should be defaulters in the analysis? (%):",
+                            min_value=1,
+                            max_value=99,
+                            value=default_slider_val,
+                            step=1,
+                            help="Specifies the proportion of defaulters in the analytical dataset. Excess records will be cut off to reach this exact percentage."
+                        )
+                        _, preview_stats = balance_portfolio_by_defaulter_pct(clean_df, target_pct)
+                        st.markdown(f"""
+                        <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 16px; margin-top: 8px;">
+                            <b style="color: #60a5fa;">✂️ Cutoff Preview:</b> Retaining <b>{preview_stats['kept_total']:,} records</b> 
+                            ({preview_stats['kept_def']:,} Defaulters + {preview_stats['kept_non_def']:,} Performing = <b>{preview_stats['actual_pct']:.1f}% Defaulters</b>).<br>
+                            <span style="color: #f59e0b; font-weight: 600;">Cutting off {preview_stats['cut_off']:,} excess records</span> to achieve the target ratio.
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        target_pct = None
+                        st.info(f"ℹ️ Full portfolio retained: {n_tot:,} records evaluated at the natural {orig_pct:.1f}% default rate.")
+
             else:
-                st.warning(f"No alternative data fixtures found in `{ALTERNATIVE_DATA_DIR}`.")
+                st.info("👈 Please upload a loan panel CSV (or click 'Use Sample Panel') to configure analysis.")
+                target_pct = None
 
-        with col_layer_right:
-            st.caption("Layering Action:")
-            if st.button("⚡ Execute Vectorized Join in DuckDB", type="primary", help="Merges selected alternative feeds into the analytical feature store in ephemeral RAM."):
-                layered_df = apply_macro_layers(
-                    st.session_state.duck_conn,
-                    selected_layers,
-                    ALTERNATIVE_DATA_DIR
+        st.write("")
+
+        # Advanced Pipeline Settings (Collapsible Expander)
+        with st.expander("⚙️ Advanced Pipeline Configuration (Jurisdiction, Alternative Feeds, Metrics & Ensembling)", expanded=False):
+            cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
+            with cfg_col1:
+                st.markdown("**Jurisdiction Matching**")
+                country_list = list(COUNTRY_MAPPING.keys())
+                default_idx = country_list.index("Kenya") if "Kenya" in country_list else 0
+                selected_country_name = st.selectbox("Country Jurisdiction:", country_list, index=default_idx, help="Select national jurisdiction for macroeconomic and regulatory matching.")
+                selected_country_code = COUNTRY_MAPPING[selected_country_name]
+
+            with cfg_col2:
+                st.markdown("**Alternative Data Feeds**")
+                available_files = [f for f in os.listdir(ALTERNATIVE_DATA_DIR) if f.endswith(('.db', '.csv'))] if os.path.exists(ALTERNATIVE_DATA_DIR) else []
+                selected_layers = []
+                for f in available_files:
+                    if st.checkbox(f"Join `{f}` (Macro GCP)", value=(f == 'macro_layer.db'), key=f"feed_{f}"):
+                        selected_layers.append(f)
+
+            with cfg_col3:
+                st.markdown("**AutoML & Explainability**")
+                optimize_metric = st.selectbox("Optimization Metric:", ["PR-AUC", "ROC-AUC", "F1", "Accuracy"], index=0, help="PR-AUC is prioritized for imbalanced credit default detection.")
+                tune_toggle = st.checkbox("Optuna Hyperparameter Tuning", value=True)
+                ensemble_toggle = st.checkbox("Soft-Voting Ensemble (GBDT + TabFM)", value=True)
+                auto_prune_toggle = st.checkbox("Auto-prune noisy features (IV < 0.02)", value=True)
+
+        if raw_df is not None and is_valid:
+            st.write("")
+            btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
+            with btn_col2:
+                run_pipeline_btn = st.button(
+                    "🚀 Ingest, Balance Portfolio & Run Full AutoML Pipeline",
+                    type="primary",
+                    width='stretch',
+                    help="Executes quality gate, balances defaulter ratio, joins alternative data, screens IV, and trains PyCaret champion models in one single click."
                 )
-                st.session_state.final_layered_df = layered_df
-                st.session_state.layers_applied = True
-                st.success(f"Successfully merged features! Matrix shape: {layered_df.shape[0]:,} rows × {layered_df.shape[1]} columns.")
-                st.rerun()
 
-            if st.button("Continue Without Layering", help="Proceed directly with ingested baseline features."):
-                st.session_state.final_layered_df = st.session_state.primary_df.copy()
-                st.session_state.layers_applied = True
-                st.rerun()
-
-        if st.session_state.layers_applied:
-            st.info(f"📊 Analytical Feature Store: **{st.session_state.final_layered_df.shape[1]} Total Features** Ready for AutoML Dispatcher")
-            
-            with st.expander("🔍 Preview Merged Feature Store & Data Science Exports"):
-                st.dataframe(st.session_state.final_layered_df.head(3), width='stretch')
-                col_exp_fs1, col_exp_fs2 = st.columns(2)
-                with col_exp_fs1:
-                    fs_csv = export_csv_bytes(st.session_state.final_layered_df)
-                    st.download_button(
-                        label="📥 Export Feature Store (.CSV)",
-                        data=fs_csv,
-                        file_name="kba_feature_store_snapshot.csv",
-                        mime="text/csv",
-                        width='stretch'
-                    )
-                with col_exp_fs2:
-                    try:
-                        fs_parquet = export_parquet_bytes(st.session_state.final_layered_df)
-                        st.download_button(
-                            label="📦 Export Feature Store (.Parquet)",
-                            data=fs_parquet,
-                            file_name="kba_feature_store_snapshot.parquet",
-                            mime="application/octet-stream",
-                            width='stretch'
-                        )
-                    except Exception:
-                        st.caption("Parquet export engine (pyarrow) optional")
-
-        st.write("---")
-
-        # ==============================================================================
-        # SECTION 2.6: INFORMATION VALUE (IV) SCREENING
-        # ==============================================================================
-        with st.expander("🏷️ 2.6 Information Value (IV) Screening & Feature Catalog", expanded=True):
-            iv_df = calculate_portfolio_iv(st.session_state.final_layered_df, target="default_flag")
-            
-            # Update DuckDB metadata catalog with calculated IV bands
-            update_iv_metadata(st.session_state.duck_conn, iv_df)
-
-            col_iv_table, col_iv_chart = st.columns([1, 1])
-            with col_iv_table:
-                st.dataframe(
-                    iv_df.style.background_gradient(subset=["Information Value (IV)"], cmap="YlGn"),
-                    width='stretch'
-                )
-                
-                # Download IV Table
-                st.download_button(
-                    label="📥 Download IV Table (.CSV)",
-                    data=iv_df.to_csv(index=False).encode('utf-8'),
-                    file_name="kba_iv_screening.csv",
-                    mime="text/csv",
-                    width='stretch'
-                )
-                
-            with col_iv_chart:
-                iv_fig = plot_iv_chart(iv_df)
-                st.plotly_chart(iv_fig, width='stretch')
-
-            st.write("---")
-            st.markdown("#### 🧭 Variable Discoverability Matrix")
-            st.caption("Plots Collection Hardness vs. Evidence x Information Value (IV) to prioritize feature acquisition.")
-            quadrant_fig = plot_iv_quadrant_chart(iv_df)
-            if quadrant_fig:
-                st.plotly_chart(quadrant_fig, width='stretch')
-            
-            st.write("---")
-            # 1-Click Feature Pruning
-            if st.checkbox("⚡ Auto-prune noisy features (IV < 0.02) before AutoML training", value=True):
-                valid_features = iv_df[iv_df["Information Value (IV)"] >= 0.02]["Feature Name"].tolist() + ["default_flag"]
-                # Keep essential tracking columns if present
-                for col in ["loan_no", "borrower_id", "session_id", "country_code", "loan_date", "due_date", "payoff_date"]:
-                    if col in st.session_state.final_layered_df.columns and col not in valid_features:
-                        valid_features.append(col)
-                st.session_state.final_layered_df = st.session_state.final_layered_df[valid_features]
-
-        st.write("---")
-
-        # ==============================================================================
-        # SECTION 2.5: EXPLORATORY DATA ANALYSIS (EDA) & DESCRIPTIVE STATISTICS
-        # ==============================================================================
-        with st.expander("📊 2.5 Exploratory Data Analysis (EDA) & Descriptive Statistics Hub", expanded=False):
-            st.markdown("Automated portfolio profiling, collinearity heatmaps, and distribution histograms for risk analysts and data scientists.")
-            
-            active_eda_df = st.session_state.final_layered_df
-            
-            tab_stat, tab_dist, tab_corr, tab_box = st.tabs([
-                "📋 Descriptive Statistics Table", 
-                "📈 Distribution Histograms", 
-                "🔥 Collinearity Heatmap", 
-                "📦 Outliers & Quantile Boxplots"
-            ])
-            
-            with tab_stat:
-                col_eda_s1, col_eda_s2 = st.columns([4, 1])
-                with col_eda_s2:
-                    with st.popover("ℹ️ Statistical Metrics Guide"):
-                        st.markdown("""
-                        ### 📋 Portfolio Dispersion & Skew Metrics
-                        
-                        * **Mean vs. Median:** Large divergence signals high skewness in loan sizing or income distributions.
-                        * **Standard Deviation (Std):** Measures dispersion around the mean.
-                        * **Interquartile Range (IQR):** $Q3 - Q1$ (middle 50% of portfolio values), immune to extreme outliers.
-                        * **Missing Rate %:** Flags data collection gaps in alternative channels.
-                        """)
-                
-                stats_df = CreditRiskEDA.generate_descriptive_stats_df(active_eda_df)
-                st.dataframe(stats_df, width='stretch')
-                
-                col_d1, col_d2 = st.columns(2)
-                with col_d1:
-                    st.download_button(
-                        label="📥 Download Descriptive Statistics (.CSV)",
-                        data=stats_df.to_csv(index=False).encode('utf-8'),
-                        file_name="kba_descriptive_statistics.csv",
-                        mime="text/csv",
-                        width='stretch'
-                    )
-                with col_d2:
-                    buf_stat = io.BytesIO()
-                    with pd.ExcelWriter(buf_stat, engine='openpyxl') as writer:
-                        stats_df.to_excel(writer, index=False, sheet_name='Descriptive_Stats')
-                    st.download_button(
-                        label="📥 Download Descriptive Statistics (.Excel)",
-                        data=buf_stat.getvalue(),
-                        file_name="kba_descriptive_statistics.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        width='stretch'
-                    )
-                    
-            with tab_dist:
-                with st.popover("ℹ️ Class Imbalance in Distribution Plots"):
-                    st.markdown("""
-                    ### 📈 Distribution Histograms by Loan Outcome
-                    
-                    * **🟢 Performing vs. 🔴 Defaulted:**  
-                      Histograms compare feature distributions between paying borrowers and defaulters.
-                    * **Discriminatory Power:**  
-                      Features with clear separation between green and red distributions (e.g. low M-Pesa velocity or high Fuliza utilization among defaulters) have strong predictive power.
-                    """)
-                dist_fig = CreditRiskEDA.generate_feature_distributions_fig(active_eda_df)
-                if dist_fig:
-                    st.plotly_chart(dist_fig, width='stretch')
-                dist_png = CreditRiskEDA.generate_feature_distributions_bytes(active_eda_df)
-                if dist_png:
-                    st.download_button(
-                        label="⬇️ Download Distribution Histograms (.PNG)",
-                        data=dist_png,
-                        file_name="kba_feature_distributions.png",
-                        mime="image/png",
-                        width='stretch'
-                    )
-                    
-            with tab_corr:
-                with st.popover("ℹ️ Understanding Pearson Collinearity"):
-                    st.markdown("""
-                    ### 🔥 Pearson Cross-Correlation & Multicollinearity
-                    
-                    * **Correlation Coefficient ($r$):**  
-                      Ranges from $-1.0$ (perfect inverse correlation) to $+1.0$ (perfect direct correlation).
-                    * **Multicollinearity Risk ($|r| > 0.80$):**  
-                      Highly correlated features (e.g. GDP and County Output) provide redundant information and can inflate variance in linear and tree models. TreeSHAP handles non-linear cross-interactions effectively.
-                    """)
-                corr_fig = CreditRiskEDA.generate_correlation_heatmap_fig(active_eda_df)
-                if corr_fig:
-                    st.plotly_chart(corr_fig, width='stretch')
-                
-                col_c1, col_c2 = st.columns(2)
-                with col_c1:
-                    corr_png = CreditRiskEDA.generate_correlation_heatmap_bytes(active_eda_df)
-                    if corr_png:
-                        st.download_button(
-                            label="⬇️ Download Correlation Heatmap (.PNG)",
-                            data=corr_png,
-                            file_name="kba_correlation_heatmap.png",
-                            mime="image/png",
-                            width='stretch'
-                        )
-                with col_c2:
-                    corr_matrix = CreditRiskEDA.generate_correlation_matrix(active_eda_df)
-                    if not corr_matrix.empty:
-                        st.download_button(
-                            label="📥 Download Correlation Matrix (.CSV)",
-                            data=corr_matrix.to_csv().encode('utf-8'),
-                            file_name="kba_correlation_matrix.csv",
-                            mime="text/csv",
-                            width='stretch'
-                        )
-                        
-            with tab_box:
-                with st.popover("ℹ️ Tukey Boxplots & Outlier Detection"):
-                    st.markdown("""
-                    ### 📦 Outlier Bounds & Quantile Spread
-                    
-                    * **Box Dimensions:** Represents the Interquartile Range ($IQR = Q3 - Q1$, middle 50%).
-                    * **Whiskers:** Extend to $1.5 \\times IQR$ from the upper/lower quartiles.
-                    * **Outliers (Dots):** Loan amounts or tenors exceeding the whiskers indicate extreme borrowing behavior requiring strict credit limit caps.
-                    """)
-                box_fig = CreditRiskEDA.generate_boxplots_by_target_fig(active_eda_df)
-                if box_fig:
-                    st.plotly_chart(box_fig, width='stretch')
-
-        st.write("---")
-
-
-    # ==============================================================================
-    # SECTION 3: TABFM & PYCARET AUTOML ENGINE & DISPATCHER
-    # ==============================================================================
-    if st.session_state.layers_applied:
-        st.subheader("🤖 3. PyCaret & TabFM AutoML Engine")
-
-        col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
-
-        with col_cfg1:
-            st.markdown("**Task & Optimization Metric**")
-            st.caption("Target Detected: `default_flag` (Binary Default Classification)")
-            optimize_metric = st.selectbox(
-                "Optimization Metric:", 
-                ["PR-AUC", "ROC-AUC", "F1", "Accuracy"], 
-                index=0,
-                help="PR-AUC is prioritized for imbalanced credit default data to minimize costly false negative lending approvals."
-            )
-            with st.popover("ℹ️ Why PR-AUC Optimization?"):
-                st.markdown("""
-                ### 🎯 PR-AUC vs. ROC-AUC in Credit Risk
-                
-                **The Class Imbalance Challenge:**  
-                In standard credit portfolios, defaults are relatively rare (**3% to 15%** default rate).
-                
-                * **Why Not Standard Accuracy?**  
-                  A naive model that simply predicts *every loan will perform (0)* achieves 90%+ accuracy, but misses **100% of defaults**, causing massive portfolio losses.
-                * **Why ROC-AUC Can Be Misleading:**  
-                  ROC-AUC measures True Positive Rate against False Positive Rate. Because performing loans (the negative class) vastly outnumber defaulters, the False Positive Rate stays small, making ROC-AUC look overly optimistic.
-                * **Why PR-AUC (Precision-Recall Area Under Curve)?**  
-                  PR-AUC focuses directly on the **minority class ($Default = 1$)**. It strictly penalizes approving risky borrowers (false positives) and failing to detect defaults (false negatives):
-                  $$\\text{Precision} = \\frac{TP}{TP + FP}, \\quad \\text{Recall} = \\frac{TP}{TP + FN}$$
-                
-                **Takeaway:** Optimizing for PR-AUC directly preserves lending capital and lowers Non-Performing Loans (NPLs).
-                """)
-
-        with col_cfg2:
-            st.markdown("**Hyperparameter Tuning & Ensembling**")
-            tune_toggle = st.checkbox(
-                "Enable Automated Optuna Hyperparameter Tuning", 
-                value=True,
-                help="Uses Tree-structured Parzen Estimator (TPE) Bayesian search across tree depths, learning rates, and L1/L2 penalties."
-            )
-            ensemble_toggle = st.checkbox(
-                "Construct Soft-Voting GBDT & TabFM Ensemble", 
-                value=True,
-                help="Averages predicted probability distributions across heterogeneous model families to reduce variance."
-            )
-            with st.popover("ℹ️ How Optuna & Ensembles Work"):
-                st.markdown("""
-                ### 🔬 Optuna Tuning & Soft-Voting Ensembles
-                
-                * **Optuna (Bayesian TPE Optimization):**  
-                  Unlike brute-force Grid Search, Optuna constructs a probabilistic surrogate model of the objective function. It intelligently focuses computational trials on the most promising hyperparameter regions (learning rate, tree depth, subsample ratio, and L2 regularization penalties).
-                * **Soft-Voting Ensemble ($VotingClassifier$):**  
-                  Combines the calibrated predicted default probabilities of the top champion algorithms:
-                  $$P(\\text{Default} = 1 \\mid x) = \\sum_{m=1}^{M} w_m \\cdot P_m(\\text{Default} = 1 \\mid x)$$
-                * **Why Blend Models?**  
-                  GBDTs (LightGBM/XGBoost/CatBoost) capture orthogonal split boundaries, while TabFM captures continuous non-linear representations. Combining them reduces model variance and dampens idiosyncratic errors.
-                """)
-
-        with col_cfg3:
-            st.markdown("**Engine Execution**")
-            if st.button("🚀 Run PyCaret & AutoML Pipeline", type="primary", width='stretch', help="Trains PyCaret 3.x candidate classifiers with automated cross-validation, hyperparameter tuning, and soft-voting ensembling."):
+            if run_pipeline_btn:
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -699,42 +538,97 @@ with tab_engine:
                     status_text.markdown(f"**Status:** {msg}")
 
                 try:
-                    with st.spinner("Benchmarking candidate models via AutoML Engine..."):
-                        results = run_automl_pipeline(
-                            st.session_state.final_layered_df,
-                            optimize_metric=optimize_metric,
-                            tune_hyperparams=tune_toggle,
-                            create_ensemble=ensemble_toggle,
-                            progress_callback=update_progress
-                        )
+                    # 1. Defaulter Ratio Balancing & Cutoff
+                    update_progress(10, "Balancing portfolio to target defaulter percentage and cutting off excess records...")
+                    balanced_df, cutoff_stats = balance_portfolio_by_defaulter_pct(
+                        clean_df, 
+                        None if keep_all_records else target_pct
+                    )
+                    balanced_df['session_id'] = st.session_state.session_id
+                    balanced_df['country_code'] = selected_country_code
+                    st.session_state.primary_df = balanced_df.copy()
+                    st.session_state.cutoff_stats = cutoff_stats
+
+                    # 2. DuckDB In-Memory Ingestion
+                    update_progress(25, f"Ingesting {len(balanced_df):,} balanced records into DuckDB ephemeral RAM...")
+                    st.session_state.duck_conn.register('temp_df', balanced_df)
+                    st.session_state.duck_conn.execute("CREATE OR REPLACE TABLE ml_features AS SELECT * FROM temp_df")
+
+                    # 3. Alternative Data Layering
+                    update_progress(40, "Executing vectorized in-memory joins with alternative macro feeds...")
+                    layered_df = apply_macro_layers(
+                        st.session_state.duck_conn,
+                        selected_layers,
+                        ALTERNATIVE_DATA_DIR
+                    )
+                    st.session_state.final_layered_df = layered_df.copy()
+
+                    # 4. Information Value (IV) & Pruning
+                    update_progress(55, "Calculating Information Value (IV) & cataloging feature bands...")
+                    iv_df = calculate_portfolio_iv(layered_df, target="default_flag")
+                    update_iv_metadata(st.session_state.duck_conn, iv_df)
+                    st.session_state.iv_df = iv_df
+
+                    if auto_prune_toggle:
+                        valid_features = iv_df[iv_df["Information Value (IV)"] >= 0.02]["Feature Name"].tolist() + ["default_flag"]
+                        for col in ["loan_no", "borrower_id", "session_id", "country_code", "loan_date", "due_date", "payoff_date"]:
+                            if col in st.session_state.final_layered_df.columns and col not in valid_features:
+                                valid_features.append(col)
+                        st.session_state.final_layered_df = st.session_state.final_layered_df[valid_features]
+
+                    # 5. PyCaret & TabFM AutoML Engine
+                    update_progress(70, "Dispatching candidate classifiers via AutoML Engine & Optuna...")
+                    results = run_automl_pipeline(
+                        st.session_state.final_layered_df,
+                        optimize_metric=optimize_metric,
+                        tune_hyperparams=tune_toggle,
+                        create_ensemble=ensemble_toggle,
+                        progress_callback=lambda p, m: update_progress(int(70 + (p * 0.28)), m)
+                    )
 
                     st.session_state.automl_results = results
+                    st.session_state.data_ingested = True
+                    st.session_state.layers_applied = True
                     st.session_state.training_completed = True
-                    status_text.success("🎉 AutoML Pipeline Completed Successfully!")
+                    update_progress(100, "🎉 Analysis completed! Rendering live dashboard...")
                     st.rerun()
+
                 except Exception as e:
-                    status_text.error(f"❌ AutoML Execution Error: {str(e)}")
+                    status_text.error(f"❌ Pipeline Execution Error: {str(e)}")
                     st.exception(e)
 
-            with st.popover("ℹ️ What is TabFM (Foundation Model)?"):
-                st.markdown("""
-                ### 🤖 TabFM (Tabular Foundation Model)
-                
-                * **Deep Tabular Embeddings:**  
-                  Maps discrete categorical and continuous alternative signals into continuous dense vector representations.
-                * **Residual Feature Interactors:**  
-                  Uses multi-layer residual blocks `(128 -> 64 -> 32)` with LayerNorm and Dropout to learn non-linear cross-feature relationships between macro indicators (e.g. county GCP) and mobile money velocity.
-                * **Sigmoid Probability Calibration:**  
-                  Outputs well-calibrated default probabilities ready for regulatory scoring.
-                """)
+    else:
+        # ==============================================================================
+        # LIVE DASHBOARD & ONSET DEFAULT SCREENING
+        # ==============================================================================
+        # --- CUTOFF & INGESTION SUMMARY TOP BANNER ---
+        cutoff = st.session_state.cutoff_stats
+        col_sum_m, col_sum_r1, col_sum_r2 = st.columns([3, 1, 1])
+        with col_sum_m:
+            if cutoff:
+                st.markdown(f"""
+                <div style="background: rgba(37, 99, 235, 0.09); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 10px; padding: 12px 18px; margin-bottom: 12px;">
+                    <span style="font-size: 14px; font-weight: 800; color: #3b82f6;">🎯 Portfolio Balanced & Analyzed:</span> 
+                    Retained <b>{cutoff['kept_total']:,} records</b> ({cutoff['kept_def']:,} Defaulters &nbsp;|&nbsp; {cutoff['kept_non_def']:,} Performing loans &nbsp;=&nbsp; <b>{cutoff['actual_pct']:.1f}% Defaulters</b>). 
+                    Cut off <b>{cutoff['cut_off']:,}</b> excess records from original {cutoff['original_total']:,} uploaded rows.
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.success(f"✅ Ingested and evaluated {len(st.session_state.primary_df):,} records!")
+
+        with col_sum_r1:
+            if st.button("⚙️ Adjust Defaulter %", width='stretch', help="Return to configuration panel to adjust target % without losing uploaded file"):
+                st.session_state.training_completed = False
+                st.session_state.automl_results = None
+                st.rerun()
+
+        with col_sum_r2:
+            if st.button("🔄 Reset Portfolio", width='stretch', help="Wipes all memory stores and uploads a new portfolio"):
+                reset_portfolio_state()
+                st.rerun()
 
         st.write("---")
 
-
-    # ==============================================================================
-    # SECTION 4: LIVE DASHBOARD & ONSET DEFAULT SCREENING
-    # ==============================================================================
-    if st.session_state.training_completed and st.session_state.automl_results is not None:
         results = st.session_state.automl_results
         df = st.session_state.final_layered_df
         probs = results.get("predicted_probs", np.zeros(len(df)))
@@ -1212,6 +1106,191 @@ pd_scores = pipeline.predict_proba(new_loans)[:, 1]
 new_loans["predicted_pd"] = pd_scores
 print(new_loans[["borrower_id", "predicted_pd"]].head())
             """, language="python")
+
+        # ==============================================================================
+        # SECTION 2.6: INFORMATION VALUE (IV) SCREENING EXPANDER
+        # ==============================================================================
+        with st.expander("🏷️ Information Value (IV) Screening & Feature Catalog", expanded=False):
+            iv_df = st.session_state.iv_df if st.session_state.iv_df is not None else calculate_portfolio_iv(st.session_state.final_layered_df, target="default_flag")
+            
+            col_iv_table, col_iv_chart = st.columns([1, 1])
+            with col_iv_table:
+                st.dataframe(
+                    iv_df.style.background_gradient(subset=["Information Value (IV)"], cmap="YlGn"),
+                    width='stretch'
+                )
+                
+                # Download IV Table
+                st.download_button(
+                    label="📥 Download IV Table (.CSV)",
+                    data=iv_df.to_csv(index=False).encode('utf-8'),
+                    file_name="kba_iv_screening.csv",
+                    mime="text/csv",
+                    width='stretch'
+                )
+                
+            with col_iv_chart:
+                iv_fig = plot_iv_chart(iv_df)
+                st.plotly_chart(iv_fig, width='stretch')
+
+            st.write("---")
+            st.markdown("#### 🧭 Variable Discoverability Matrix")
+            st.caption("Plots Collection Hardness vs. Evidence x Information Value (IV) to prioritize feature acquisition.")
+            quadrant_fig = plot_iv_quadrant_chart(iv_df)
+            if quadrant_fig:
+                st.plotly_chart(quadrant_fig, width='stretch')
+
+        # ==============================================================================
+        # SECTION 2.5: EXPLORATORY DATA ANALYSIS (EDA) & DESCRIPTIVE STATISTICS EXPANDER
+        # ==============================================================================
+        with st.expander("📊 Exploratory Data Analysis (EDA) & Descriptive Statistics Hub", expanded=False):
+            st.markdown("Automated portfolio profiling, collinearity heatmaps, and distribution histograms for risk analysts and data scientists.")
+            
+            active_eda_df = st.session_state.final_layered_df
+            
+            tab_stat, tab_dist, tab_corr, tab_box = st.tabs([
+                "📋 Descriptive Statistics Table", 
+                "📈 Distribution Histograms", 
+                "🔥 Collinearity Heatmap", 
+                "📦 Outliers & Quantile Boxplots"
+            ])
+            
+            with tab_stat:
+                col_eda_s1, col_eda_s2 = st.columns([4, 1])
+                with col_eda_s2:
+                    with st.popover("ℹ️ Statistical Metrics Guide"):
+                        st.markdown("""
+                        ### 📋 Portfolio Dispersion & Skew Metrics
+                        
+                        * **Mean vs. Median:** Large divergence signals high skewness in loan sizing or income distributions.
+                        * **Standard Deviation (Std):** Measures dispersion around the mean.
+                        * **Interquartile Range (IQR):** $Q3 - Q1$ (middle 50% of portfolio values), immune to extreme outliers.
+                        * **Missing Rate %:** Flags data collection gaps in alternative channels.
+                        """)
+                
+                stats_df = CreditRiskEDA.generate_descriptive_stats_df(active_eda_df)
+                st.dataframe(stats_df, width='stretch')
+                
+                col_d1, col_d2 = st.columns(2)
+                with col_d1:
+                    st.download_button(
+                        label="📥 Download Descriptive Statistics (.CSV)",
+                        data=stats_df.to_csv(index=False).encode('utf-8'),
+                        file_name="kba_descriptive_statistics.csv",
+                        mime="text/csv",
+                        width='stretch'
+                    )
+                with col_d2:
+                    buf_stat = io.BytesIO()
+                    with pd.ExcelWriter(buf_stat, engine='openpyxl') as writer:
+                        stats_df.to_excel(writer, index=False, sheet_name='Descriptive_Stats')
+                    st.download_button(
+                        label="📥 Download Descriptive Statistics (.Excel)",
+                        data=buf_stat.getvalue(),
+                        file_name="kba_descriptive_statistics.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        width='stretch'
+                    )
+                    
+            with tab_dist:
+                with st.popover("ℹ️ Class Imbalance in Distribution Plots"):
+                    st.markdown("""
+                    ### 📈 Distribution Histograms by Loan Outcome
+                    
+                    * **🟢 Performing vs. 🔴 Defaulted:**  
+                      Histograms compare feature distributions between paying borrowers and defaulters.
+                    * **Discriminatory Power:**  
+                      Features with clear separation between green and red distributions have strong predictive power.
+                    """)
+                dist_fig = CreditRiskEDA.generate_feature_distributions_fig(active_eda_df)
+                if dist_fig:
+                    st.plotly_chart(dist_fig, width='stretch')
+                dist_png = CreditRiskEDA.generate_feature_distributions_bytes(active_eda_df)
+                if dist_png:
+                    st.download_button(
+                        label="⬇️ Download Distribution Histograms (.PNG)",
+                        data=dist_png,
+                        file_name="kba_feature_distributions.png",
+                        mime="image/png",
+                        width='stretch'
+                    )
+                    
+            with tab_corr:
+                with st.popover("ℹ️ Understanding Pearson Collinearity"):
+                    st.markdown("""
+                    ### 🔥 Pearson Cross-Correlation & Multicollinearity
+                    
+                    * **Correlation Coefficient ($r$):**  
+                      Ranges from $-1.0$ (perfect inverse correlation) to $+1.0$ (perfect direct correlation).
+                    * **Multicollinearity Risk ($|r| > 0.80$):**  
+                      Highly correlated features provide redundant information and can inflate variance in linear and tree models.
+                    """)
+                corr_fig = CreditRiskEDA.generate_correlation_heatmap_fig(active_eda_df)
+                if corr_fig:
+                    st.plotly_chart(corr_fig, width='stretch')
+                
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    corr_png = CreditRiskEDA.generate_correlation_heatmap_bytes(active_eda_df)
+                    if corr_png:
+                        st.download_button(
+                            label="⬇️ Download Correlation Heatmap (.PNG)",
+                            data=corr_png,
+                            file_name="kba_correlation_heatmap.png",
+                            mime="image/png",
+                            width='stretch'
+                        )
+                with col_c2:
+                    corr_matrix = CreditRiskEDA.generate_correlation_matrix(active_eda_df)
+                    if not corr_matrix.empty:
+                        st.download_button(
+                            label="📥 Download Correlation Matrix (.CSV)",
+                            data=corr_matrix.to_csv().encode('utf-8'),
+                            file_name="kba_correlation_matrix.csv",
+                            mime="text/csv",
+                            width='stretch'
+                        )
+                        
+            with tab_box:
+                with st.popover("ℹ️ Tukey Boxplots & Outlier Detection"):
+                    st.markdown("""
+                    ### 📦 Outlier Bounds & Quantile Spread
+                    
+                    * **Box Dimensions:** Represents the Interquartile Range ($IQR = Q3 - Q1$, middle 50%).
+                    * **Whiskers:** Extend to $1.5 \\times IQR$ from the upper/lower quartiles.
+                    * **Outliers (Dots):** Loan amounts or tenors exceeding the whiskers indicate extreme borrowing behavior.
+                    """)
+                box_fig = CreditRiskEDA.generate_boxplots_by_target_fig(active_eda_df)
+                if box_fig:
+                    st.plotly_chart(box_fig, width='stretch')
+
+        # ==============================================================================
+        # SECTION 2: MERGED FEATURE STORE SNAPSHOT EXPANDER
+        # ==============================================================================
+        with st.expander("🔍 Merged Feature Store Snapshot & Data Science Exports", expanded=False):
+            st.dataframe(st.session_state.final_layered_df.head(5), width='stretch')
+            col_exp_fs1, col_exp_fs2 = st.columns(2)
+            with col_exp_fs1:
+                fs_csv = export_csv_bytes(st.session_state.final_layered_df)
+                st.download_button(
+                    label="📥 Export Feature Store (.CSV)",
+                    data=fs_csv,
+                    file_name="kba_feature_store_snapshot.csv",
+                    mime="text/csv",
+                    width='stretch'
+                )
+            with col_exp_fs2:
+                try:
+                    fs_parquet = export_parquet_bytes(st.session_state.final_layered_df)
+                    st.download_button(
+                        label="📦 Export Feature Store (.Parquet)",
+                        data=fs_parquet,
+                        file_name="kba_feature_store_snapshot.parquet",
+                        mime="application/octet-stream",
+                        width='stretch'
+                    )
+                except Exception:
+                    st.caption("Parquet export engine (pyarrow) optional")
 
 
     # ==============================================================================
