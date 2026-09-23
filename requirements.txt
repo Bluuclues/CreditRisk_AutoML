@@ -14,3 +14,4 @@ matplotlib
 seaborn
 plotly
 openpyxl
+st-gsheets-connection
