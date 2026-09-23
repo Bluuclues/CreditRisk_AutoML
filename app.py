@@ -468,9 +468,9 @@ with tab_engine:
                         update_progress(100, "Done!")
                         st.rerun()
 
-                except Exception as e:
-                    status_text.error(f"❌ Error: {str(e)}")
-                    st.exception(e)
+                    except Exception as e:
+                        status_text.error(f"❌ Error: {str(e)}")
+                        st.exception(e)
 
         with col_info:
             st.markdown('''
