@@ -280,35 +280,27 @@ with tab_engine:
         # ==============================================================================
         st.markdown('''
         <style>
-        /* Target the Horizontal Block that holds the columns to be the mustard background */
-        div[data-testid="stHorizontalBlock"]:has(.anchor-main-wrapper) {
+        /* Target the left orange card column */
+        div[data-testid="column"]:has(.anchor-left-orange-card) {
+            background-color: #d8982a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        /* Inner white dropzone container inside the left card */
+        div[data-testid="stVerticalBlock"]:has(> div > div > div > .anchor-white-inner) {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        /* Target the right orange card column */
+        div[data-testid="column"]:has(.anchor-right-orange-card) {
             background-color: #d8982a;
             border-radius: 12px;
             padding: 30px;
-            padding-bottom: 30px;
-            margin-bottom: 20px;
-            margin-top: 20px;
-            align-items: stretch;
-        }
-        
-        /* Target the white card column */
-        div[data-testid="column"]:has(.anchor-white-card) {
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        
-        /* Target the blue card column */
-        div[data-testid="column"]:has(.anchor-blue-card) {
-            background-color: #2b5b7c;
-            border-radius: 12px;
-            padding: 30px;
-            color: white;
             box-shadow: -10px 10px 20px rgba(0,0,0,0.15);
-            /* Pull the blue card down to overlap the bottom of the mustard background */
-            margin-bottom: -60px;
-            z-index: 10;
         }
         
         /* Streamlit File Uploader Override */
@@ -331,6 +323,7 @@ with tab_engine:
             display: flex;
             justify-content: flex-start;
             padding-left: 30px !important;
+            margin-top: 40px !important;
         }
         button[kind="primary"] p {
             font-size: 28px !important;
@@ -346,45 +339,48 @@ with tab_engine:
         col_up, col_info = st.columns([1.3, 1], gap="large")
         
         with col_up:
-            st.markdown('<span class="anchor-main-wrapper"></span><span class="anchor-white-card"></span>', unsafe_allow_html=True)
+            st.markdown('<span class="anchor-left-orange-card"></span>', unsafe_allow_html=True)
             
-            st.markdown('''
-            <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
-            <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 15px; text-align: center;">Click to select or drag & drop panel CSV file</div>
-            ''', unsafe_allow_html=True)
-            
-            uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
-            
-            if uploaded_file is not None:
-                st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
-                st.markdown(f'<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded: {uploaded_file.name}</span></div>', unsafe_allow_html=True)
-            elif st.session_state.raw_upload_df is not None:
-                st.markdown('<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded from cache</span></div>', unsafe_allow_html=True)
-            
-            st.write("")
-            # Bottom footer for sample template
-            col_c1, col_c2 = st.columns([1, 1])
-            with col_c1:
-                st.markdown('<div style="margin-top:10px; font-size: 11px; color: #94a3b8;">ⓘ Need baseline template format?</div>', unsafe_allow_html=True)
-            with col_c2:
-                st.download_button(
-                    label="↓ Download Sample Template",
-                    data=sample_csv,
-                    file_name="kba_sample_credit_panel.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+            with st.container():
+                st.markdown('<span class="anchor-white-inner"></span>', unsafe_allow_html=True)
+                
+                st.markdown('''
+                <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
+                <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 15px; text-align: center;">Click to select or drag & drop panel CSV file</div>
+                ''', unsafe_allow_html=True)
+                
+                uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
+                
+                if uploaded_file is not None:
+                    st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
+                    st.markdown(f'<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded: {uploaded_file.name}</span></div>', unsafe_allow_html=True)
+                elif st.session_state.raw_upload_df is not None:
+                    st.markdown('<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded from cache</span></div>', unsafe_allow_html=True)
+                
+                st.write("")
+                # Bottom footer for sample template
+                col_c1, col_c2 = st.columns([1, 1])
+                with col_c1:
+                    st.markdown('<div style="margin-top:10px; font-size: 11px; color: #94a3b8;">ⓘ Need baseline template format?</div>', unsafe_allow_html=True)
+                with col_c2:
+                    st.download_button(
+                        label="↓ Download Sample Template",
+                        data=sample_csv,
+                        file_name="kba_sample_credit_panel.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
             
         with col_info:
-            st.markdown('<span class="anchor-blue-card"></span>', unsafe_allow_html=True)
+            st.markdown('<span class="anchor-right-orange-card"></span>', unsafe_allow_html=True)
             st.markdown('''
-            <div style="font-size: 24px; font-weight: 800; margin-bottom: 15px; font-family: 'DM Sans', sans-serif;">What is happening<br>with your data?</div>
-            <div style="font-size: 14px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
+            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #2b5b7c; line-height: 1.2;">What is happening<br>with your data?</div>
+            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #ffffff;">
                 When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
-                <span style="color: #f59e0b; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
+                <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
                 Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
             </div>
-            <div style="margin-top: 20px; font-size: 12px; color: #cbd5e1; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
+            <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
             ''', unsafe_allow_html=True)
             
         # Anonymize Checkbox
