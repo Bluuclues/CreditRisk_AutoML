@@ -44,7 +44,7 @@ def init_auth_db() -> None:
     """Initializes the users sheet if it does not already exist."""
     conn = _get_gsheets_connection()
     try:
-        df = conn.read()
+        df = conn.read(ttl=0)
         # If the dataframe is completely empty or missing our core columns, initialize it
         if df.empty or 'email' not in df.columns:
             empty_df = pd.DataFrame(columns=DB_COLUMNS)
@@ -106,7 +106,7 @@ def register_user(
         return False, "You must consent to participating in research surveys and interviews.", None
 
     conn = _get_gsheets_connection()
-    df = conn.read()
+    df = conn.read(ttl=0)
     
     # Check if email already exists
     if not df.empty and 'email' in df.columns:
@@ -169,7 +169,7 @@ def authenticate_user(email: str, password: str) -> Tuple[bool, str, Optional[Di
         return False, "Email and password are required.", None
 
     conn = _get_gsheets_connection()
-    df = conn.read()
+    df = conn.read(ttl=0)
     
     if df.empty or 'email' not in df.columns:
         return False, "Invalid email or password.", None
@@ -217,7 +217,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     """Retrieves safe user metadata by email."""
     init_auth_db()
     conn = _get_gsheets_connection()
-    df = conn.read()
+    df = conn.read(ttl=0)
     
     if df.empty or 'email' not in df.columns:
         return None
@@ -245,7 +245,7 @@ def get_all_users() -> List[Dict[str, Any]]:
     """Retrieves all registered users (excluding password hashes and salts) for admin review."""
     init_auth_db()
     conn = _get_gsheets_connection()
-    df = conn.read()
+    df = conn.read(ttl=0)
     
     if df.empty or 'email' not in df.columns:
         return []
