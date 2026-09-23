@@ -282,25 +282,14 @@ with tab_engine:
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        /* Right column (Info - Blue) */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2) {
-            background-color: #2b5b7c;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100%;
+        /* Extend the Orange Card to the entire Left Column */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(1) {
+            background-color: #d8982a !important;
+            border-radius: 12px !important;
+            padding: 30px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
         }
-        
-        /* Make the stFileUploader the Orange Card */
-        div[data-testid='stFileUploader'] {
-            background-color: #d8982a;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+
 
         /* Streamlit File Uploader Inner Dropzone */
         div[data-testid='stFileUploader'] section {
@@ -313,8 +302,8 @@ with tab_engine:
         
         /* Run tool button styling */
         button[kind="primary"] {
-            background-color: #d8982a !important;
-            color: #000 !important;
+            background-color: #0f172a !important;
+            color: #ffffff !important;
             font-weight: 900 !important;
             border: none !important;
             border-radius: 8px !important;
@@ -333,7 +322,7 @@ with tab_engine:
             text-transform: uppercase;
         }
         button[kind="primary"]:hover {
-            background-color: #c4821f !important;
+            background-color: #1e293b !important;
         }
 
         /* Checkbox Box Thicker & Square */
@@ -474,13 +463,15 @@ with tab_engine:
 
         with col_info:
             st.markdown('''
-            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
-            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
-                When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
-                <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
-                Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
+            <div style="background-color: #2b5b7c; border-radius: 12px; padding: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
+                <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
+                    When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
+                    <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
+                    Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
+                </div>
+                <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
             </div>
-            <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
             ''', unsafe_allow_html=True)
 
     else:
