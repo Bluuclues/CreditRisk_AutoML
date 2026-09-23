@@ -27,6 +27,7 @@ from modules.iv_engine import calculate_portfolio_iv, plot_iv_chart, plot_iv_qua
 from modules.models.dispatcher import run_automl_pipeline
 from modules.models.shap_explainer import CreditRiskExplainer
 from modules.eda_visualizer import CreditRiskEDA
+from modules.login_page import render_login_signup_page, render_authenticated_user_bar
 
 # Streamlit Page Config - Wide Layout
 st.set_page_config(
@@ -169,6 +170,12 @@ def init_single_page_state():
     if 'duck_conn' not in st.session_state:
         st.session_state.duck_conn = duckdb.connect(':memory:')
     
+    # Authentication & Access Control
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'current_user' not in st.session_state:
+        st.session_state.current_user = None
+
     # Workflow Flags
     if 'data_ingested' not in st.session_state:
         st.session_state.data_ingested = False
@@ -227,6 +234,21 @@ from modules.portfolio_balancer import (
 
 
 init_single_page_state()
+
+
+# ==============================================================================
+# AUTHENTICATION & ACCESS GATE
+# ==============================================================================
+if not st.session_state.get('authenticated', False):
+    render_login_signup_page()
+    st.stop()
+
+
+# ==============================================================================
+# AUTHENTICATED USER SESSION BAR
+# ==============================================================================
+render_authenticated_user_bar()
+st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
 
 # ==============================================================================

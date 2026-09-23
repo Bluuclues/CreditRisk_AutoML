@@ -1,0 +1,11 @@
+# Ignore all authentication database files, keys, and session storage
+*.db
+*.sqlite
+*.sqlite3
+*.key
+*.pem
+*.env
+users.db
+users.db-journal
+users.db-wal
+users.db-shm
