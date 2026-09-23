@@ -282,14 +282,7 @@ with tab_engine:
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        /* Extend the Orange Card to the entire Left Column */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(1) {
-            background-color: #d8982a !important;
-            border-radius: 12px !important;
-            padding: 30px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-        }
-
+        /* Orange Card styling is now handled reliably via JS injection below */
 
         /* Streamlit File Uploader Inner Dropzone */
         div[data-testid='stFileUploader'] section {
@@ -364,6 +357,27 @@ with tab_engine:
         col_up, col_info = st.columns([1.3, 1], gap="large")
         
         with col_up:
+            # 100% Robust JS Injection to style the column container exactly, bypassing CSS limitations
+            st.markdown('<div id="orange-card-marker"></div>', unsafe_allow_html=True)
+            components.html('''
+            <script>
+                const applyOrange = () => {
+                    const marker = window.parent.document.getElementById('orange-card-marker');
+                    if (marker) {
+                        const colContent = marker.closest('div[data-testid="stVerticalBlock"]');
+                        if (colContent) {
+                            colContent.style.backgroundColor = '#d8982a';
+                            colContent.style.borderRadius = '12px';
+                            colContent.style.padding = '30px';
+                            colContent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                        }
+                    }
+                };
+                applyOrange();
+                setTimeout(applyOrange, 500);
+            </script>
+            ''', height=0, width=0)
+            
             st.markdown('''
             <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
             <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 5px; text-align: center;">Click to select or drag & drop panel CSV file</div>
