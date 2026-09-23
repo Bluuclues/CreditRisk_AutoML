@@ -255,8 +255,8 @@ st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 # TOP-LEVEL TWO-TAB NAVIGATION
 # ==============================================================================
 tab_engine, tab_sources = st.tabs([
-    "⚡ Credit Risk AutoML Engine", 
-    "📚 Data Sources & Methodology"
+    "📊 Dashboard", 
+    "📜 Data Governance"
 ])
 
 
@@ -279,35 +279,43 @@ with tab_engine:
         # DATA INGESTION MOCKUP UI
         # ==============================================================================
         st.markdown('''
+        st.markdown('''
         <style>
-        /* Target the left orange card column */
-        div[data-testid="column"]:has(.anchor-left-orange-card) {
-            background-color: #d8982a;
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        /* Target the left column (Info - Blue) */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(1) {
+            background-color: #2b5b7c;
             border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
-        /* Inner white dropzone container inside the left card */
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > .anchor-white-inner) {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        /* Target the right orange card column */
-        div[data-testid="column"]:has(.anchor-right-orange-card) {
+        /* Target the right column (Upload - Orange) */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2) {
             background-color: #d8982a;
             border-radius: 12px;
             padding: 30px;
-            box-shadow: -10px 10px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
+        /* Make the file dropzone container white */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2) div[data-testid="stFileUploader"] {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 10px;
+            border: 1px dashed #cbd5e1;
+        }
+
         /* Streamlit File Uploader Override */
         div[data-testid='stFileUploader'] section {
             background-color: transparent !important;
-            border: 1px dashed #cbd5e1 !important;
-            padding: 20px !important;
+            border: none !important;
+            padding: 10px !important;
         }
         div[data-testid='stFileUploader'] section > button { display: none; }
         
@@ -326,9 +334,10 @@ with tab_engine:
             margin-top: 40px !important;
         }
         button[kind="primary"] p {
-            font-size: 28px !important;
-            font-weight: 900 !important;
+            font-family: 'Press Start 2P', monospace !important;
+            font-size: 16px !important;
             margin: 0;
+            text-transform: uppercase;
         }
         button[kind="primary"]:hover {
             background-color: #c4821f !important;
@@ -336,52 +345,46 @@ with tab_engine:
         </style>
         ''', unsafe_allow_html=True)
         
-        col_up, col_info = st.columns([1.3, 1], gap="large")
+        col_info, col_up = st.columns([1, 1.3], gap="large")
         
-        with col_up:
-            st.markdown('<span class="anchor-left-orange-card"></span>', unsafe_allow_html=True)
-            
-            with st.container():
-                st.markdown('<span class="anchor-white-inner"></span>', unsafe_allow_html=True)
-                
-                st.markdown('''
-                <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
-                <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 15px; text-align: center;">Click to select or drag & drop panel CSV file</div>
-                ''', unsafe_allow_html=True)
-                
-                uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
-                
-                if uploaded_file is not None:
-                    st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
-                    st.markdown(f'<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded: {uploaded_file.name}</span></div>', unsafe_allow_html=True)
-                elif st.session_state.raw_upload_df is not None:
-                    st.markdown('<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded from cache</span></div>', unsafe_allow_html=True)
-                
-                st.write("")
-                # Bottom footer for sample template
-                col_c1, col_c2 = st.columns([1, 1])
-                with col_c1:
-                    st.markdown('<div style="margin-top:10px; font-size: 11px; color: #94a3b8;">ⓘ Need baseline template format?</div>', unsafe_allow_html=True)
-                with col_c2:
-                    st.download_button(
-                        label="↓ Download Sample Template",
-                        data=sample_csv,
-                        file_name="kba_sample_credit_panel.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-            
         with col_info:
-            st.markdown('<span class="anchor-right-orange-card"></span>', unsafe_allow_html=True)
             st.markdown('''
-            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #2b5b7c; line-height: 1.2;">What is happening<br>with your data?</div>
-            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #ffffff;">
+            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
+            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
                 When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
                 <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
                 Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
             </div>
             <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
             ''', unsafe_allow_html=True)
+            
+        with col_up:
+            st.markdown('''
+            <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
+            <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 5px; text-align: center;">Click to select or drag & drop panel CSV file</div>
+            ''', unsafe_allow_html=True)
+            
+            uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
+            
+            if uploaded_file is not None:
+                st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
+                st.markdown(f'<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded: {uploaded_file.name}</span></div>', unsafe_allow_html=True)
+            elif st.session_state.raw_upload_df is not None:
+                st.markdown('<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded from cache</span></div>', unsafe_allow_html=True)
+            
+            st.write("")
+            # Bottom footer for sample template
+            col_c1, col_c2 = st.columns([1, 1])
+            with col_c1:
+                st.markdown('<div style="margin-top:10px; font-size: 11px; color: #475569;">ⓘ Need baseline template format?</div>', unsafe_allow_html=True)
+            with col_c2:
+                st.download_button(
+                    label="↓ Download Sample Template",
+                    data=sample_csv,
+                    file_name="kba_sample_credit_panel.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
             
         # Anonymize Checkbox
         col_cb1, col_cb2 = st.columns([1.5, 4])
