@@ -2,10 +2,11 @@
 Credit Analyze - Custom Authentication UI Page
 ==============================================
 Renders the branded Login & Sign-Up interface conforming strictly to the brand mockup:
-- Unified warm terracotta container on the left with brand header, 3 cards, methodology, and dark banner
-- Left side scrollable, right side fixed/sticky on desktop
-- Mobile-friendly responsive stacking without redundant toggle buttons
-- Smooth desktop and touch-screen toggle switching between Sign Up and Login cards
+- Unified warm terracotta container on the left with brand header, 3 feature cards, methodology, and dark banner
+- Left side has dedicated independent scrolling (via st.container height and CSS)
+- Right side is completely fixed / sticky on desktop
+- Mobile-friendly responsive stacking without any extra toggle buttons
+- Touch-screen and desktop toggle switcher between Sign Up and Login cards
 - Fonts: DM Sans for headings/brand titles, Century Gothic for body copy and inputs
 - Immediate access provisioning upon signup with mandatory survey & interview consent
 """
@@ -42,7 +43,7 @@ def render_login_signup_page() -> None:
     
     # Initialize active auth mode in session state
     if "auth_mode" not in st.session_state:
-        st.session_state.auth_mode = "signup"  # default to signup as in mockup top
+        st.session_state.auth_mode = "signup"
 
     # Load base64 assets
     logo_b64 = get_base64_image(LOGO_PATH)
@@ -51,14 +52,16 @@ def render_login_signup_page() -> None:
     st.markdown('<div class="auth-page-root">', unsafe_allow_html=True)
 
     # Two main columns: Left = Scrollable Brand & Methodology, Right = Fixed Switchable Form
-    col_left, col_right = st.columns([1.2, 0.9], gap="large")
+    col_left, col_right = st.columns([1.22, 0.88], gap="large")
 
     # =========================================================================
-    # LEFT COLUMN: SCROLLABLE BRAND SHOWCASE (UNIFIED TERRACOTTA CARD)
+    # LEFT COLUMN: INDEPENDENTLY SCROLLABLE BRAND SHOWCASE (UNIFIED TERRACOTTA)
     # =========================================================================
     with col_left:
-        st.markdown(f"""
-        <div class="auth-left-scrollable">
+        # Native Streamlit scroll container with fixed height ensures robust scrolling on all devices
+        left_scroll_box = st.container(height=840, border=False)
+        with left_scroll_box:
+            st.markdown(f"""
             <div class="brand-showcase-unified-card">
                 <!-- Brand Header -->
                 <div class="brand-header-flex">
@@ -105,12 +108,12 @@ def render_login_signup_page() -> None:
                     </div>
                 </div>
 
-                <!-- Methodology Section Heading -->
+                <!-- Methodology Section Heading (Bold Black per mockup) -->
                 <div class="methodology-title-wrap">
                     <h2 class="methodology-heading">Methodology 📝</h2>
                 </div>
 
-                <!-- Methodology Visual Display -->
+                <!-- Methodology 5-Stage Architecture Graphic -->
                 <div class="methodology-diagram-card">
                     {"<img src='" + methodology_b64 + "' class='methodology-banner-img' alt='5-Stage Methodology Architecture' />" if methodology_b64 else ""}
                 </div>
@@ -126,207 +129,200 @@ def render_login_signup_page() -> None:
                     </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
     # =========================================================================
-    # RIGHT COLUMN: FIXED CONTAINER WITH TOGGLE FOR SIGN UP & LOGIN
+    # RIGHT COLUMN: PERMANENTLY FIXED ACTION PANEL (TOGGLE FOR SIGN UP & LOGIN)
     # =========================================================================
     with col_right:
-        st.markdown('<div class="auth-right-fixed">', unsafe_allow_html=True)
+        right_panel = st.container(border=False)
+        with right_panel:
+            is_signup = (st.session_state.auth_mode == "signup")
 
-        # ---------------------------------------------------------------------
-        # Touch-screen & Desktop Segmented Switcher / Toggle
-        # ---------------------------------------------------------------------
-        st.markdown('<div class="auth-toggle-container">', unsafe_allow_html=True)
-        col_tog1, col_tog2 = st.columns(2)
-        
-        is_signup = (st.session_state.auth_mode == "signup")
-        
-        with col_tog1:
-            btn_signup_label = "💻 Sign Up to Prototype" + ("  ●" if is_signup else "")
-            if st.button(
-                btn_signup_label,
-                key="btn_toggle_signup",
-                use_container_width=True,
-                type="primary" if is_signup else "secondary"
-            ):
-                st.session_state.auth_mode = "signup"
-                st.rerun()
+            # Segmented Touch & Click Switcher
+            st.markdown(f'<div class="auth-toggle-container {"mode-signup" if is_signup else "mode-login"}">', unsafe_allow_html=True)
+            col_tog1, col_tog2 = st.columns(2)
+            
+            with col_tog1:
+                if st.button(
+                    "💻 Sign Up to Prototype",
+                    key="btn_toggle_signup",
+                    use_container_width=True,
+                    type="primary" if is_signup else "secondary"
+                ):
+                    st.session_state.auth_mode = "signup"
+                    st.rerun()
 
-        with col_tog2:
-            btn_login_label = "🔑 Already have access" + ("  ●" if not is_signup else "")
-            if st.button(
-                btn_login_label,
-                key="btn_toggle_login",
-                use_container_width=True,
-                type="primary" if not is_signup else "secondary"
-            ):
-                st.session_state.auth_mode = "login"
-                st.rerun()
-                
-        st.markdown('</div>', unsafe_allow_html=True)
+            with col_tog2:
+                if st.button(
+                    "🔑 Already have access",
+                    key="btn_toggle_login",
+                    use_container_width=True,
+                    type="primary" if not is_signup else "secondary"
+                ):
+                    st.session_state.auth_mode = "login"
+                    st.rerun()
+                    
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---------------------------------------------------------------------
-        # VIEW 1: SIGN UP CARD (Active when auth_mode == 'signup')
-        # ---------------------------------------------------------------------
-        if is_signup:
-            st.markdown("""
-            <div class="auth-panel-card signup-card">
-                <h2 class="auth-panel-title">Sign Up to the Prototype 💻</h2>
-                <p class="auth-panel-wip">
-                    <strong>Work in Progress:</strong> Credit Analyze is in its early stages of active development. Core features, functionality, and the overall design will evolve rapidly as we continue to build. We appreciate your patience and welcome early feedback!
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            # -----------------------------------------------------------------
+            # VIEW 1: SIGN UP CARD (Slate Blue Card)
+            # -----------------------------------------------------------------
+            if is_signup:
+                st.markdown("""
+                <div class="auth-panel-card signup-card">
+                    <h2 class="auth-panel-title">Sign Up to the Prototype 💻</h2>
+                    <p class="auth-panel-wip">
+                        <strong>Work in Progress:</strong> Credit Analyze is in its early stages of active development. Core features, functionality, and the overall design will evolve rapidly as we continue to build. We appreciate your patience and welcome early feedback!
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
 
-            with st.form("signup_form", clear_on_submit=False):
-                st.markdown('<div class="pill-form-container signup-form-inputs">', unsafe_allow_html=True)
-                
-                signup_email = st.text_input(
-                    "Email",
-                    placeholder="email",
-                    label_visibility="collapsed",
-                    key="signup_email_input"
-                )
-                
-                signup_details = st.text_input(
-                    "Other Details",
-                    placeholder="Other Details (e.g. Name, Institution, Role)",
-                    label_visibility="collapsed",
-                    key="signup_details_input"
-                )
+                with st.form("signup_form", clear_on_submit=False):
+                    st.markdown('<div class="pill-form-container signup-form-inputs">', unsafe_allow_html=True)
+                    
+                    signup_email = st.text_input(
+                        "Email",
+                        placeholder="email",
+                        label_visibility="collapsed",
+                        key="signup_email_input"
+                    )
+                    
+                    signup_details = st.text_input(
+                        "Other Details",
+                        placeholder="Other Details (e.g. Name, Institution, Role)",
+                        label_visibility="collapsed",
+                        key="signup_details_input"
+                    )
 
-                col_pwd1, col_pwd2 = st.columns(2)
-                with col_pwd1:
-                    signup_pwd = st.text_input(
+                    col_pwd1, col_pwd2 = st.columns(2)
+                    with col_pwd1:
+                        signup_pwd = st.text_input(
+                            "Password",
+                            type="password",
+                            placeholder="password (min 6 chars)",
+                            label_visibility="collapsed",
+                            key="signup_pwd_input"
+                        )
+                    with col_pwd2:
+                        signup_pwd_confirm = st.text_input(
+                            "Confirm Password",
+                            type="password",
+                            placeholder="confirm password",
+                            label_visibility="collapsed",
+                            key="signup_pwd_confirm_input"
+                        )
+
+                    # Mandatory Terms & Survey/Interview Consent Tickbox
+                    agree_terms = st.checkbox(
+                        "I agree to the Terms & Conditions and consent to participating in research surveys and interviews.",
+                        value=False,
+                        key="signup_terms_tickbox"
+                    )
+
+                    with st.expander("📄 Review Prototype Terms, Conditions & Research Consent", expanded=False):
+                        st.markdown("""
+                        ### 📋 Credit Analyze Prototype Testing Agreement
+                        
+                        1. **Early Prototype Testing**:
+                           Credit Analyze is an experimental financial technology platform developed for the Kenya Bankers Association (KBA) Credit Scoring & Alternative Data Initiative.
+                        
+                        2. **Mandatory Survey & Interview Consent**:
+                           By signing up, you explicitly agree to make yourself available for brief user experience surveys, qualitative feedback sessions, and user research interviews to guide the evolution of Credit Analyze.
+                        
+                        3. **Immediate Access Grant**:
+                           Access is currently open without a tail gate. Valid registration instantly provisions active tester credentials.
+                        
+                        4. **Privacy & Data Security (Kenya DPA 2019)**:
+                           Your personal credentials and email are safely hashed and stored in an isolated data store. Individual client portfolio records processed in the platform are ephemeral and held in volatile RAM.
+                        """)
+
+                    signup_btn = st.form_submit_button("Sign Up to the Prototype 🚀", use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    if signup_btn:
+                        if not signup_email or "@" not in signup_email:
+                            st.error("Please provide a valid email address.")
+                        elif not signup_pwd or len(signup_pwd) < 6:
+                            st.error("Password must be at least 6 characters long.")
+                        elif signup_pwd != signup_pwd_confirm:
+                            st.error("Passwords do not match.")
+                        elif not agree_terms:
+                            st.warning("⚠️ You must check the tick box agreeing to the Terms and Conditions and consenting to research surveys and interviews.")
+                        else:
+                            success, msg, user_data = register_user(
+                                email=signup_email,
+                                password=signup_pwd,
+                                other_details=signup_details,
+                                agreed_terms=True,
+                                survey_consent=True
+                            )
+                            if success:
+                                st.session_state.authenticated = True
+                                st.session_state.current_user = user_data
+                                st.success("🎉 " + msg)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+
+                # Quick switch link
+                if st.button("Already have access? Click here to Log In 🔑", key="switch_to_login_btn", use_container_width=True):
+                    st.session_state.auth_mode = "login"
+                    st.rerun()
+
+            # -----------------------------------------------------------------
+            # VIEW 2: LOGIN CARD (Warm Ochre Card)
+            # -----------------------------------------------------------------
+            else:
+                st.markdown("""
+                <div class="auth-panel-card login-card">
+                    <h2 class="auth-panel-title">Already have access, can login</h2>
+                    <p class="auth-panel-wip">
+                        <strong>Work in Progress:</strong> Credit Analyze is in its early stages of active development. Core features, functionality, and the overall design will evolve rapidly as we continue to build. We appreciate your patience and welcome early feedback!
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                with st.form("login_form", clear_on_submit=False):
+                    st.markdown('<div class="pill-form-container login-form-inputs">', unsafe_allow_html=True)
+                    
+                    login_email = st.text_input(
+                        "Email",
+                        placeholder="email",
+                        label_visibility="collapsed",
+                        key="login_email_input"
+                    )
+                    
+                    login_pwd = st.text_input(
                         "Password",
                         type="password",
-                        placeholder="password (min 6 chars)",
+                        placeholder="password",
                         label_visibility="collapsed",
-                        key="signup_pwd_input"
-                    )
-                with col_pwd2:
-                    signup_pwd_confirm = st.text_input(
-                        "Confirm Password",
-                        type="password",
-                        placeholder="confirm password",
-                        label_visibility="collapsed",
-                        key="signup_pwd_confirm_input"
+                        key="login_pwd_input"
                     )
 
-                # Mandatory Terms & Survey/Interview Consent Tickbox
-                agree_terms = st.checkbox(
-                    "I agree to the Terms & Conditions and consent to participating in research surveys and interviews.",
-                    value=False,
-                    key="signup_terms_tickbox"
-                )
+                    login_btn = st.form_submit_button("Log In 🔑", use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                with st.expander("📄 Review Prototype Terms, Conditions & Research Consent", expanded=False):
-                    st.markdown("""
-                    ### 📋 Credit Analyze Prototype Testing Agreement
-                    
-                    1. **Early Prototype Testing**:
-                       Credit Analyze is an experimental financial technology platform developed for the Kenya Bankers Association (KBA) Credit Scoring & Alternative Data Initiative.
-                    
-                    2. **Mandatory Survey & Interview Consent**:
-                       By signing up, you explicitly agree to make yourself available for brief user experience surveys, qualitative feedback sessions, and user research interviews to guide the evolution of Credit Analyze.
-                    
-                    3. **Immediate Access Grant**:
-                       Access is currently open without a tail gate. Valid registration instantly provisions active tester credentials.
-                    
-                    4. **Privacy & Data Security (Kenya DPA 2019)**:
-                       Your personal credentials and email are safely hashed and stored in an isolated data store. Individual client portfolio records processed in the platform are ephemeral and held in volatile RAM.
-                    """)
-
-                signup_btn = st.form_submit_button("Sign Up to the Prototype 🚀", use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-                if signup_btn:
-                    if not signup_email or "@" not in signup_email:
-                        st.error("Please provide a valid email address.")
-                    elif not signup_pwd or len(signup_pwd) < 6:
-                        st.error("Password must be at least 6 characters long.")
-                    elif signup_pwd != signup_pwd_confirm:
-                        st.error("Passwords do not match.")
-                    elif not agree_terms:
-                        st.warning("⚠️ You must check the tick box agreeing to the Terms and Conditions and consenting to research surveys and interviews.")
-                    else:
-                        success, msg, user_data = register_user(
-                            email=signup_email,
-                            password=signup_pwd,
-                            other_details=signup_details,
-                            agreed_terms=True,
-                            survey_consent=True
-                        )
-                        if success:
-                            st.session_state.authenticated = True
-                            st.session_state.current_user = user_data
-                            st.success("🎉 " + msg)
-                            st.rerun()
+                    if login_btn:
+                        if not login_email or not login_pwd:
+                            st.error("Please enter both email and password.")
                         else:
-                            st.error(msg)
+                            success, msg, user_data = authenticate_user(login_email, login_pwd)
+                            if success:
+                                st.session_state.authenticated = True
+                                st.session_state.current_user = user_data
+                                st.success("✓ " + msg)
+                                st.rerun()
+                            else:
+                                st.error("⚠️ " + msg)
 
-            # Footer switch link
-            if st.button("Already have access? Click here to Log In 🔑", key="switch_to_login_btn", use_container_width=True):
-                st.session_state.auth_mode = "login"
-                st.rerun()
+                # Quick switch link
+                if st.button("Need an account? Click here to Sign Up 💻", key="switch_to_signup_btn", use_container_width=True):
+                    st.session_state.auth_mode = "signup"
+                    st.rerun()
 
-        # ---------------------------------------------------------------------
-        # VIEW 2: LOGIN CARD (Active when auth_mode == 'login')
-        # ---------------------------------------------------------------------
-        else:
-            st.markdown("""
-            <div class="auth-panel-card login-card">
-                <h2 class="auth-panel-title">Already have access, can login</h2>
-                <p class="auth-panel-wip">
-                    <strong>Work in Progress:</strong> Credit Analyze is in its early stages of active development. Core features, functionality, and the overall design will evolve rapidly as we continue to build. We appreciate your patience and welcome early feedback!
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            with st.form("login_form", clear_on_submit=False):
-                st.markdown('<div class="pill-form-container login-form-inputs">', unsafe_allow_html=True)
-                
-                login_email = st.text_input(
-                    "Email",
-                    placeholder="email",
-                    label_visibility="collapsed",
-                    key="login_email_input"
-                )
-                
-                login_pwd = st.text_input(
-                    "Password",
-                    type="password",
-                    placeholder="password",
-                    label_visibility="collapsed",
-                    key="login_pwd_input"
-                )
-
-                login_btn = st.form_submit_button("Log In 🔑", use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-                if login_btn:
-                    if not login_email or not login_pwd:
-                        st.error("Please enter both email and password.")
-                    else:
-                        success, msg, user_data = authenticate_user(login_email, login_pwd)
-                        if success:
-                            st.session_state.authenticated = True
-                            st.session_state.current_user = user_data
-                            st.success("✓ " + msg)
-                            st.rerun()
-                        else:
-                            st.error("⚠️ " + msg)
-
-            # Footer switch link
-            if st.button("Need an account? Click here to Sign Up 💻", key="switch_to_signup_btn", use_container_width=True):
-                st.session_state.auth_mode = "signup"
-                st.rerun()
-
-        st.markdown('</div>', unsafe_allow_html=True)  # Close auth-right-fixed
-
-    st.markdown('</div>', unsafe_allow_html=True)  # Close auth-page-root
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_authenticated_user_bar() -> None:

@@ -249,57 +249,75 @@ div[data-testid="stPopoverBody"] {
 
 .auth-page-root {
     margin-top: -15px;
-    padding-bottom: 30px;
+    padding-bottom: 20px;
+}
+
+/* Tighten page padding for auth screen so desktop view fits viewport */
+.block-container:has(.auth-page-root) {
+    padding-top: 1.2rem !important;
+    padding-bottom: 1.2rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 1480px !important;
 }
 
 /* --------------------------------------------------------------------------
    DESKTOP DUAL COLUMN: SCROLLABLE LEFT, FIXED RIGHT
    -------------------------------------------------------------------------- */
 @media (min-width: 992px) {
-    .auth-left-scrollable {
-        max-height: calc(100vh - 40px);
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-right: 12px;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(203, 108, 24, 0.45) transparent;
-    }
-    
-    .auth-left-scrollable::-webkit-scrollbar {
-        width: 6px;
-    }
-    .auth-left-scrollable::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    .auth-left-scrollable::-webkit-scrollbar-thumb {
-        background-color: rgba(203, 108, 24, 0.45);
-        border-radius: 9999px;
-    }
-    .auth-left-scrollable::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(203, 108, 24, 0.8);
+    /* Prevent window-level scrolling so right side remains firmly pinned */
+    section.main:has(.auth-page-root) {
+        overflow-y: hidden !important;
     }
 
-    .auth-right-fixed {
-        position: sticky;
-        top: 16px;
-        max-height: calc(100vh - 32px);
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-bottom: 20px;
+    /* Target Streamlit's native vertical container in Left Column */
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlockBorderWrapper"] {
+        border: none !important;
+    }
+
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlock"] {
+        max-height: calc(100vh - 50px) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-right: 12px !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #d97706 transparent !important;
+    }
+
+    /* Visible terracotta custom scrollbar */
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlock"]::-webkit-scrollbar {
+        width: 8px !important;
+        display: block !important;
+    }
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlock"]::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.04) !important;
+        border-radius: 9999px !important;
+    }
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlock"]::-webkit-scrollbar-thumb {
+        background-color: #d97706 !important;
+        border-radius: 9999px !important;
+    }
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlock"]::-webkit-scrollbar-thumb:hover {
+        background-color: #b45309 !important;
+    }
+
+    /* RIGHT COLUMN: Permanently Fixed & Sticky */
+    div[data-testid="column"]:last-child {
+        position: sticky !important;
+        top: 20px !important;
+        align-self: flex-start !important;
     }
 }
 
 @media (max-width: 991px) {
-    .auth-left-scrollable {
+    div[data-testid="column"]:first-child div[data-testid="stVerticalBlock"] {
         max-height: none !important;
         overflow-y: visible !important;
         padding-right: 0 !important;
-        margin-bottom: 24px;
     }
-    .auth-right-fixed {
+    div[data-testid="column"]:last-child {
         position: static !important;
-        max-height: none !important;
-        overflow-y: visible !important;
+        margin-top: 20px !important;
     }
 }
 
@@ -531,7 +549,7 @@ div[data-testid="stPopoverBody"] {
    RIGHT COLUMN: TOGGLE SWITCHER & AUTH CARDS
    -------------------------------------------------------------------------- */
 .auth-toggle-container {
-    background: #f1f5f9;
+    background: #e2e8f0;
     border: 1px solid #cbd5e1;
     border-radius: 9999px;
     padding: 4px;
@@ -542,11 +560,36 @@ div[data-testid="stPopoverBody"] {
 .auth-toggle-container button {
     border-radius: 9999px !important;
     font-family: 'DM Sans', sans-serif !important;
-    font-size: 13px !important;
+    font-size: 13.5px !important;
     font-weight: 700 !important;
     padding: 8px 16px !important;
-    min-height: 42px !important;
+    min-height: 44px !important;
     transition: all 0.2s ease !important;
+}
+
+/* Active Sign Up Mode Button */
+.auth-toggle-container.mode-signup button[kind="primary"],
+.auth-toggle-container.mode-signup button[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, #1e4a68 0%, #15384f 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(30, 74, 104, 0.35) !important;
+    border: none !important;
+}
+
+/* Active Login Mode Button */
+.auth-toggle-container.mode-login button[kind="primary"],
+.auth-toggle-container.mode-login button[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, #cb7b12 0%, #b06407 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(203, 123, 18, 0.35) !important;
+    border: none !important;
+}
+
+.auth-toggle-container button[kind="secondary"],
+.auth-toggle-container button[data-testid="baseButton-secondary"] {
+    background: #ffffff !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
 }
 
 .auth-panel-card {
