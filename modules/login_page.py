@@ -268,7 +268,7 @@ def render_login_signup_page() -> None:
                 '      <p class="brand-tagline">A high-performance analytics engine built to '
                 'accelerate financial inclusion across Kenya and Africa by delivering scalable, '
                 'intelligent credit infrastructure.</p>'
-                '      <a href="https://github.com" target="_blank" class="gh-pill" rel="noopener noreferrer">'
+                '      <a href="https://github.com/Bluuclues/CreditRisk_AutoML" target="_blank" class="gh-pill" rel="noopener noreferrer">'
                 '        <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor">'
                 '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 '
                 '0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15'
