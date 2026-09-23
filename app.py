@@ -282,8 +282,8 @@ with tab_engine:
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        /* Target the left column (Info - Blue) */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(1) {
+        /* Right column (Info - Blue) */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2) {
             background-color: #2b5b7c;
             border-radius: 12px;
             padding: 30px;
@@ -291,34 +291,27 @@ with tab_engine:
             display: flex;
             flex-direction: column;
             justify-content: center;
+            height: 100%;
         }
         
-        /* Target the right column (Upload - Orange) */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2) {
+        /* Make the stFileUploader the Orange Card */
+        div[data-testid='stFileUploader'] {
             background-color: #d8982a;
             border-radius: 12px;
-            padding: 30px;
+            padding: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
-        /* Make the file dropzone container white */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:nth-child(2) div[data-testid="stFileUploader"] {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 10px;
-            border: 1px dashed #cbd5e1;
-        }
 
-        /* Streamlit File Uploader Override */
+        /* Streamlit File Uploader Inner Dropzone */
         div[data-testid='stFileUploader'] section {
-            background-color: transparent !important;
-            border: none !important;
-            padding: 10px !important;
+            background-color: #ffffff !important;
+            border: 1px dashed #cbd5e1 !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
         }
         div[data-testid='stFileUploader'] section > button { display: none; }
         
-        /* Run tool button styling - Massive Orange Block */
+        /* Run tool button styling */
         button[kind="primary"] {
             background-color: #d8982a !important;
             color: #000 !important;
@@ -330,7 +323,8 @@ with tab_engine:
             display: flex;
             justify-content: flex-start;
             padding-left: 30px !important;
-            margin-top: 40px !important;
+            margin-top: 10px !important;
+            width: 100% !important;
         }
         button[kind="primary"] p {
             font-family: 'Press Start 2P', monospace !important;
@@ -341,22 +335,45 @@ with tab_engine:
         button[kind="primary"]:hover {
             background-color: #c4821f !important;
         }
+
+        /* Checkbox Box Thicker & Square */
+        div[data-testid="stCheckbox"] div[role="checkbox"] {
+            border-radius: 2px !important;
+            border-width: 2px !important;
+            border-color: #0f172a !important;
+            background-color: #ffffff !important;
+        }
+        div[data-testid="stCheckbox"] label span {
+            font-weight: 800 !important;
+            font-size: 16px !important;
+            color: #000 !important;
+            font-family: 'DM Sans', sans-serif !important;
+            margin-top: 2px;
+        }
+        
+        /* Progress Bar Grey */
+        div[data-testid="stProgressBar"] > div > div {
+            background-color: #94a3b8 !important;
+        }
+        
+        /* Loading Text Pixel Font */
+        .tool-loading-text {
+            font-family: 'Press Start 2P', monospace !important;
+            font-size: 10px !important;
+            color: #475569;
+            margin-top: 10px;
+        }
+
+        /* Sign Out Button Pixel Font Override */
+        .sign-out-wrapper button p {
+            font-family: 'Press Start 2P', monospace !important;
+            font-size: 10px !important;
+        }
         </style>
         ''', unsafe_allow_html=True)
         
-        col_info, col_up = st.columns([1, 1.3], gap="large")
+        col_up, col_info = st.columns([1.3, 1], gap="large")
         
-        with col_info:
-            st.markdown('''
-            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
-            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
-                When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
-                <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
-                Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
-            </div>
-            <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
-            ''', unsafe_allow_html=True)
-            
         with col_up:
             st.markdown('''
             <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
@@ -385,58 +402,62 @@ with tab_engine:
                     use_container_width=True
                 )
             
-        # Anonymize Checkbox
-        col_cb1, col_cb2 = st.columns([1.5, 4])
-        with col_cb1:
-            st.markdown('<div style="font-weight: 800; font-size: 18px; color: #000; font-family: \'DM Sans\', sans-serif; margin-top: 10px; padding-left: 20px;">Anonymize your data?</div>', unsafe_allow_html=True)
-        with col_cb2:
-            st.markdown('<div style="margin-top: 15px;">', unsafe_allow_html=True)
-            anonymize = st.checkbox("Anonymize", label_visibility="collapsed")
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.write("")
             
-        st.write("")
-        st.write("")
-        
-        # RUN TOOL Button
-        run_btn = st.button("RUN TOOL", type="primary", use_container_width=True)
-        
-        status_text = st.empty()
-        progress_bar = st.empty()
-        
-        if run_btn:
-            if st.session_state.raw_upload_df is None:
-                status_text.error("Please upload a file first!")
-            else:
-                def update_progress(pct, msg):
-                    progress_bar.progress(pct)
-                    status_text.markdown(f"<div class='tool-loading-text'>{msg}</div>", unsafe_allow_html=True)
+            # Anonymize Checkbox
+            anonymize = st.checkbox("Anonymize your data?", value=False)
+            
+            # RUN TOOL Button
+            run_btn = st.button("RUN TOOL", type="primary", use_container_width=True)
+            
+            status_text = st.empty()
+            progress_bar = st.empty()
+            
+            if run_btn:
+                if st.session_state.raw_upload_df is None:
+                    status_text.error("Please upload a file first!")
+                else:
+                    def update_progress(pct, msg):
+                        progress_bar.progress(pct)
+                        status_text.markdown(f"<div class='tool-loading-text'>{msg}</div>", unsafe_allow_html=True)
 
-                try:
-                    update_progress(10, "Validating data...")
-                    is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(st.session_state.raw_upload_df)
-                    st.session_state.validation_messages = msgs
+                    try:
+                        update_progress(10, "Validating data...")
+                        is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(st.session_state.raw_upload_df)
+                        st.session_state.validation_messages = msgs
 
-                    if not is_valid:
-                        for m in msgs:
-                            st.error(m)
-                    else:
-                        update_progress(25, "Balancing portfolio...")
-                        balanced_df, cutoff_stats = balance_portfolio_by_defaulter_pct(clean_df, None, stratify_col=None)
-                        cutoff_stats["segment_dimension"] = "None"
-                        cutoff_stats["analysis_scope"] = "Full Portfolio"
+                        if not is_valid:
+                            for m in msgs:
+                                st.error(m)
+                        else:
+                            update_progress(25, "Balancing portfolio...")
+                            balanced_df, cutoff_stats = balance_portfolio_by_defaulter_pct(clean_df, None, stratify_col=None)
+                            cutoff_stats["segment_dimension"] = "None"
+                            cutoff_stats["analysis_scope"] = "Full Portfolio"
 
-                        balanced_df['session_id'] = st.session_state.session_id
-                        balanced_df['country_code'] = "KEN" # Default
-                        st.session_state.primary_df = balanced_df.copy()
-                        st.session_state.cutoff_stats = cutoff_stats
+                            balanced_df['session_id'] = st.session_state.session_id
+                            balanced_df['country_code'] = "KEN" # Default
+                            st.session_state.primary_df = balanced_df.copy()
+                            st.session_state.cutoff_stats = cutoff_stats
 
-                        update_progress(40, "Ingesting into DuckDB...")
-                        st.session_state.duck_conn.register('temp_df', balanced_df)
-                        st.session_state.duck_conn.execute("CREATE OR REPLACE TABLE ml_features AS SELECT * FROM temp_df")
+                            update_progress(40, "Ingesting into DuckDB...")
+                            st.session_state.duck_conn.register('temp_df', balanced_df)
+                            st.session_state.duck_conn.execute("CREATE OR REPLACE TABLE ml_features AS SELECT * FROM temp_df")
 
-                        update_progress(55, "Joining macro data...")
-                        layered_df = apply_macro_layers(st.session_state.duck_conn, ['macro_layer.db'], ALTERNATIVE_DATA_DIR)
-                        st.session_state.final_layered_df = layered_df.copy()
+                            update_progress(55, "Joining macro data...")
+                            layered_df = apply_macro_layers(st.session_state.duck_conn, ['macro_layer.db'], ALTERNATIVE_DATA_DIR)
+                            st.session_state.final_layered_df = layered_df.copy()
+
+        with col_info:
+            st.markdown('''
+            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
+            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
+                When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
+                <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
+                Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
+            </div>
+            <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
+            ''', unsafe_allow_html=True)
 
                         update_progress(70, "Calculating IV...")
                         iv_df = calculate_portfolio_iv(layered_df, target="default_flag")
