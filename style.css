@@ -249,30 +249,82 @@ div[data-testid="stPopoverBody"] {
 
 .auth-page-root {
     margin-top: -15px;
-    padding-bottom: 40px;
+    padding-bottom: 30px;
 }
 
-/* LEFT COLUMN: Terracotta Brand Card */
-.brand-showcase-card {
-    background: linear-gradient(145deg, #d37217 0%, #b85709 100%);
+/* --------------------------------------------------------------------------
+   DESKTOP DUAL COLUMN: SCROLLABLE LEFT, FIXED RIGHT
+   -------------------------------------------------------------------------- */
+@media (min-width: 992px) {
+    .auth-left-scrollable {
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 12px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(203, 108, 24, 0.45) transparent;
+    }
+    
+    .auth-left-scrollable::-webkit-scrollbar {
+        width: 6px;
+    }
+    .auth-left-scrollable::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .auth-left-scrollable::-webkit-scrollbar-thumb {
+        background-color: rgba(203, 108, 24, 0.45);
+        border-radius: 9999px;
+    }
+    .auth-left-scrollable::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(203, 108, 24, 0.8);
+    }
+
+    .auth-right-fixed {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 20px;
+    }
+}
+
+@media (max-width: 991px) {
+    .auth-left-scrollable {
+        max-height: none !important;
+        overflow-y: visible !important;
+        padding-right: 0 !important;
+        margin-bottom: 24px;
+    }
+    .auth-right-fixed {
+        position: static !important;
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   LEFT COLUMN: UNIFIED TERRACOTTA CARD (MATCHES MOCKUP EXACTLY)
+   -------------------------------------------------------------------------- */
+.brand-showcase-unified-card {
+    background: linear-gradient(155deg, #d37217 0%, #aa4b06 100%);
     border-radius: 28px;
-    padding: 34px 30px;
+    padding: 32px 28px;
     color: #ffffff;
-    box-shadow: 0 14px 34px -8px rgba(184, 87, 9, 0.35);
-    margin-bottom: 24px;
+    box-shadow: 0 14px 34px -8px rgba(170, 75, 6, 0.35);
 }
 
 .brand-header-flex {
     display: flex;
     align-items: flex-start;
-    gap: 22px;
-    margin-bottom: 26px;
+    gap: 20px;
+    margin-bottom: 24px;
 }
 
 .brand-logo-wrap {
     flex-shrink: 0;
-    width: 95px;
-    height: 95px;
+    width: 96px;
+    height: 96px;
     background: #ffffff;
     border-radius: 18px;
     padding: 6px;
@@ -303,20 +355,20 @@ div[data-testid="stPopoverBody"] {
 .brand-main-title {
     font-family: 'DM Sans', sans-serif !important;
     font-weight: 800;
-    font-size: 38px;
+    font-size: 36px;
     letter-spacing: -0.5px;
     color: #ffffff !important;
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     line-height: 1.05;
     text-transform: uppercase;
 }
 
 .brand-tagline {
     font-family: 'Century Gothic', 'Questrial', sans-serif !important;
-    font-size: 14.5px;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.96) !important;
-    margin: 0 0 16px 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.95) !important;
+    margin: 0 0 14px 0;
 }
 
 .github-repo-pill {
@@ -324,10 +376,10 @@ div[data-testid="stPopoverBody"] {
     align-items: center;
     background-color: #0f172a;
     color: #ffffff !important;
-    padding: 7px 16px;
+    padding: 6px 14px;
     border-radius: 9999px;
     font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s ease;
@@ -344,7 +396,7 @@ div[data-testid="stPopoverBody"] {
     background-color: #2563eb;
     color: #ffffff;
     font-size: 11px;
-    padding: 3px 8px;
+    padding: 2px 8px;
     border-radius: 9999px;
     margin-left: 8px;
     font-weight: 700;
@@ -355,7 +407,7 @@ div[data-testid="stPopoverBody"] {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
-    margin-top: 10px;
+    margin-bottom: 24px;
 }
 
 .feature-card {
@@ -372,18 +424,18 @@ div[data-testid="stPopoverBody"] {
 }
 
 .feature-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
 }
 
 .feature-icon-badge {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 18px;
     margin-bottom: 10px;
 }
 
@@ -393,46 +445,38 @@ div[data-testid="stPopoverBody"] {
 
 .feature-card-title {
     font-family: 'DM Sans', sans-serif !important;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 700;
     color: #0f172a !important;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     line-height: 1.25;
 }
 
 .feature-card-desc {
     font-family: 'Century Gothic', 'Questrial', sans-serif !important;
-    font-size: 11.5px;
+    font-size: 11px;
     color: #475569 !important;
     line-height: 1.45;
 }
 
-/* Methodology Section */
-.methodology-outer-wrap {
-    margin-top: 24px;
-}
-
-.methodology-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+/* Methodology Section inside Unified Terracotta Card */
+.methodology-title-wrap {
     margin-bottom: 12px;
 }
 
 .methodology-heading {
     font-family: 'DM Sans', sans-serif !important;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 24px;
-    color: #0f172a;
+    color: #000000 !important;
     margin: 0;
 }
 
 .methodology-diagram-card {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 14px;
+    padding: 12px 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     margin-bottom: 18px;
     text-align: center;
 }
@@ -440,85 +484,27 @@ div[data-testid="stPopoverBody"] {
 .methodology-banner-img {
     width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 6px;
     display: block;
 }
 
-/* Split Methodology Cards (Mobile & Responsive) */
-.methodology-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-.method-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 14px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-    transition: all 0.2s ease;
-}
-
-.method-card:hover {
-    border-color: #cbd5e1;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
-}
-
-.method-step-num {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #2563eb;
-    background-color: #eff6ff;
-    padding: 2px 8px;
-    border-radius: 9999px;
-    display: inline-block;
-    margin-bottom: 6px;
-}
-
-.method-icon {
-    font-size: 20px;
-    margin-bottom: 6px;
-}
-
-.method-step-title {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 6px;
-    line-height: 1.3;
-}
-
-.method-step-desc {
-    font-family: 'Century Gothic', 'Questrial', sans-serif;
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.4;
-}
-
-/* Frictionless Callout Card */
+/* Simple & Frictionless Integration Dark Banner */
 .frictionless-callout-card {
-    background-color: #111827;
-    border-radius: 14px;
-    padding: 16px 20px;
+    background-color: #1a1e24;
+    border-radius: 12px;
+    padding: 14px 18px;
     display: flex;
     align-items: flex-start;
-    gap: 16px;
+    gap: 14px;
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .frictionless-icon {
-    font-size: 24px;
+    font-size: 22px;
     background-color: rgba(245, 158, 11, 0.2);
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -528,7 +514,7 @@ div[data-testid="stPopoverBody"] {
 
 .frictionless-title {
     font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 700;
     color: #ffffff;
     margin-bottom: 4px;
@@ -536,25 +522,46 @@ div[data-testid="stPopoverBody"] {
 
 .frictionless-desc {
     font-family: 'Century Gothic', 'Questrial', sans-serif;
-    font-size: 12px;
+    font-size: 11.5px;
     color: #94a3b8;
-    line-height: 1.5;
+    line-height: 1.45;
 }
 
-/* RIGHT COLUMN: Sign Up & Login Cards */
+/* --------------------------------------------------------------------------
+   RIGHT COLUMN: TOGGLE SWITCHER & AUTH CARDS
+   -------------------------------------------------------------------------- */
+.auth-toggle-container {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 9999px;
+    padding: 4px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+}
+
+.auth-toggle-container button {
+    border-radius: 9999px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 8px 16px !important;
+    min-height: 42px !important;
+    transition: all 0.2s ease !important;
+}
+
 .auth-panel-card {
     border-radius: 26px;
-    padding: 28px 28px 16px 28px;
+    padding: 26px 26px 14px 26px;
     color: #ffffff;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
 }
 
 .signup-card {
-    background: linear-gradient(145deg, #1e4a68 0%, #15374e 100%);
+    background: linear-gradient(155deg, #1e4a68 0%, #15374e 100%);
 }
 
 .login-card {
-    background: linear-gradient(145deg, #cb7b12 0%, #b06407 100%);
+    background: linear-gradient(155deg, #cb7b12 0%, #b06407 100%);
 }
 
 .auth-panel-title {
@@ -562,16 +569,16 @@ div[data-testid="stPopoverBody"] {
     font-size: 26px;
     font-weight: 700;
     color: #ffffff !important;
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     line-height: 1.2;
 }
 
 .auth-panel-wip {
     font-family: 'Century Gothic', 'Questrial', sans-serif !important;
-    font-size: 12px;
+    font-size: 11.5px;
     color: rgba(255, 255, 255, 0.9) !important;
     line-height: 1.45;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 }
 
 /* Streamlit Pill Input Fields & Buttons */
@@ -615,6 +622,7 @@ div[data-testid="stForm"] button {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
     transition: all 0.2s ease !important;
     margin-top: 10px;
+    min-height: 46px !important;
 }
 
 div[data-testid="stForm"] button:hover {
@@ -623,10 +631,28 @@ div[data-testid="stForm"] button:hover {
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2) !important;
 }
 
+/* Switcher button underneath form */
+button[key="switch_to_login_btn"],
+button[key="switch_to_signup_btn"] {
+    border-radius: 9999px !important;
+    font-family: 'Century Gothic', 'Questrial', sans-serif !important;
+    font-size: 13px !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    margin-top: 8px !important;
+}
+
+button[key="switch_to_login_btn"]:hover,
+button[key="switch_to_signup_btn"]:hover {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    border-color: #ffffff !important;
+}
+
 /* Checkbox Label Styling */
 div[data-testid="stCheckbox"] label span {
     font-family: 'Century Gothic', 'Questrial', sans-serif !important;
-    font-size: 12.5px !important;
+    font-size: 12px !important;
     color: #ffffff !important;
 }
 
@@ -677,10 +703,10 @@ div[data-testid="stCheckbox"] label span {
     font-family: 'Century Gothic', sans-serif;
 }
 
-/* Responsive Rules for Mobile Devices */
+/* Mobile Responsiveness */
 @media (max-width: 900px) {
-    .brand-showcase-card {
-        padding: 24px 20px !important;
+    .brand-showcase-unified-card {
+        padding: 22px 18px !important;
         border-radius: 20px !important;
     }
     .brand-header-flex {
@@ -689,12 +715,9 @@ div[data-testid="stCheckbox"] label span {
         text-align: center !important;
     }
     .brand-main-title {
-        font-size: 30px !important;
+        font-size: 28px !important;
     }
     .features-grid {
-        grid-template-columns: 1fr !important;
-    }
-    .methodology-cards-grid {
         grid-template-columns: 1fr !important;
     }
     .auth-panel-card {
