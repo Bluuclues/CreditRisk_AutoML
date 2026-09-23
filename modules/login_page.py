@@ -536,28 +536,49 @@ def render_login_signup_page() -> None:
 
 
 def render_authenticated_user_bar() -> None:
-    """Sleek session bar shown when a user is logged in."""
+    """Sleek top navigation header shown when a user is logged in."""
     user    = st.session_state.get("current_user", {})
     email   = user.get("email", "Authenticated User")
-    role    = user.get("role", "Tester").title()
-    details = user.get("other_details", "")
+    
+    logo_b64 = _b64(LOGO_PATH)
+    logo_html = f"<img src='{logo_b64}' alt='Logo' style='width: 100%; height: 100%; object-fit: cover;'/>" if logo_b64 else "CA"
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        details_badge = f"<span class='user-details-tag'>{details}</span>" if details else ""
-        st.markdown(
-            '<div class="user-session-bar">'
-            '  <span class="user-badge-icon">&#128100;</span>'
-            f'  <span class="user-email-text">{email}</span>'
-            '  <span class="user-access-pill">&#128994; Access: Granted</span>'
-            f'  <span class="user-role-pill">{role}</span>'
-            f'  {details_badge}'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+    header_html = f"""
+    <div class="main-top-header">
+        <div class="mth-left">
+            <div class="mth-logo-box">
+                {logo_html}
+            </div>
+            <a href="https://github.com/Bluuclues/CreditRisk_AutoML" target="_blank" class="gh-pill">
+                <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                <span style="margin-left:6px">GitHub</span>
+                <span class="gh-pill-action" style="background: #2563eb;">View Repository</span>
+            </a>
+        </div>
+        <div class="mth-right">
+            <span class="mth-manage-profile">Manage Profile <span style="font-size: 16px; color:#a1a1aa; margin-left: 2px;">⚙️</span></span>
+            <div class="mth-user-session">
+                <span style="font-size: 16px;">👤</span>
+                <span class="mth-email">{email}</span>
+                <div class="mth-access-pill">
+                    <span style="font-size:8px;">🟢</span> Access:<br><b>Granted</b>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
 
-    with col2:
-        if st.button("Sign Out", key="sign_out_btn", use_container_width=True):
+    # We use columns to put the sign out button right next to the HTML header
+    col_html, col_btn = st.columns([5.5, 1])
+    with col_html:
+        st.markdown(header_html, unsafe_allow_html=True)
+    with col_btn:
+        # Give it a class for custom styling in style.css
+        st.markdown("<div class='sign-out-wrapper'>", unsafe_allow_html=True)
+        if st.button("SIGN OUT", key="sign_out_btn", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.current_user = None
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)

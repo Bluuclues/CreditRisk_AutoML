@@ -292,3 +292,120 @@ div[data-testid="stPopoverBody"] {
     font-size: 12px;
     font-family: 'Century Gothic', sans-serif;
 }
+
+/* ==========================================================================
+   MOCKUP HEADER BAR
+   ========================================================================== */
+.main-top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: #ffffff;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.mth-left, .mth-right { display: flex; align-items: center; gap: 15px; }
+.mth-logo-box {
+    width: 44px; height: 44px;
+    background: #000;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: bold; overflow: hidden;
+}
+.mth-manage-profile {
+    font-weight: 700; color: #a1a1aa; font-size: 13px; text-transform: uppercase;
+    display: flex; align-items: center; cursor: pointer;
+}
+.mth-user-session {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px;
+}
+.mth-email { font-weight: 700; color: #0f172a; font-size: 14px; }
+.mth-access-pill {
+    background: #dcfce7; color: #16a34a; font-size: 10px;
+    padding: 2px 6px; border-radius: 4px; line-height: 1.1;
+}
+.sign-out-wrapper button {
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 8px !important; font-weight: 800 !important;
+    color: #0f172a !important; height: 44px !important;
+    margin-top: 10px !important;
+}
+
+/* ==========================================================================
+   DATA INGESTION MOCKUP UI
+   ========================================================================== */
+.mustard-bg-container {
+    background-color: #d8982a;
+    border-radius: 12px;
+    padding: 30px;
+    position: relative;
+    margin-bottom: 10px;
+}
+.upload-white-card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.blue-info-card {
+    background-color: #2b5b7c;
+    border-radius: 12px;
+    padding: 30px;
+    color: white;
+    box-shadow: -10px 10px 20px rgba(0,0,0,0.15);
+    height: 100%;
+    position: relative;
+    z-index: 10;
+}
+.blue-info-title {
+    font-size: 24px; font-weight: 800; margin-bottom: 15px; font-family: 'DM Sans', sans-serif;
+}
+.blue-info-text {
+    font-size: 14px; line-height: 1.6; font-family: 'Century Gothic', sans-serif;
+}
+.blue-info-highlight { color: #f59e0b; font-style: italic; }
+.blue-info-link {
+    margin-top: 20px; font-size: 12px; color: #cbd5e1; text-decoration: underline; cursor: pointer;
+}
+
+/* Override Streamlit File Uploader */
+div[data-testid='stFileUploader'] {
+    width: 100%;
+}
+div[data-testid='stFileUploader'] section {
+    background-color: transparent !important;
+    border: 2px dashed #e2e8f0 !important;
+    padding: 30px !important;
+}
+div[data-testid='stFileUploader'] section > button {
+    display: none; /* Hide browse files button if we can't style it */
+}
+.upload-icon-circle {
+    width: 48px; height: 48px; border-radius: 50%; border: 1px solid #e2e8f0;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #4f46e5; font-size: 20px; margin-bottom: 15px;
+}
+.upload-text-main { font-weight: 700; color: #0f172a; font-size: 15px; }
+.upload-text-sub { font-size: 12px; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; margin-top: 5px; display: inline-block; }
+.upload-footer { display: flex; justify-content: space-between; margin-top: 20px; font-size: 12px; color: #64748b; }
+
+.anonymize-row { display: flex; align-items: center; gap: 10px; margin: 15px 0 30px 10px; }
+.anonymize-label { font-weight: 800; font-size: 18px; color: #000; font-family: 'DM Sans', sans-serif; }
+.anonymize-box { width: 24px; height: 24px; background: #000; border: 2px solid #fff; outline: 2px solid #000; }
+
+.run-tool-btn button {
+    background-color: #d8982a !important;
+    color: #000 !important;
+    font-weight: 900 !important; font-size: 24px !important;
+    border-radius: 8px !important; border: none !important;
+    height: 60px !important;
+    text-align: left !important; padding-left: 30px !important;
+}
+.run-tool-progress {
+    width: 100%; height: 16px; background: #e2e8f0; border-radius: 8px; overflow: hidden; margin-top: -10px; position: relative; z-index: 10; width: 90%; margin-left: auto;
+}
+.run-tool-bar { height: 100%; background: #4ade80; width: 0%; transition: width 0.3s; }
+.tool-loading-text { font-size: 22px; font-weight: 800; color: #94a3b8; text-align: center; margin-top: 10px; }

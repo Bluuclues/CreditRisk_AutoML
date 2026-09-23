@@ -346,276 +346,128 @@ with tab_engine:
 
     if not st.session_state.training_completed:
         # ==============================================================================
-        # SINGLE INTERACTION: PORTFOLIO UPLOAD, DEFAULTER CUTOFF % & AUTOML EXECUTION
+        # DATA INGESTION MOCKUP UI
         # ==============================================================================
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 14px; padding: 22px 26px; margin-bottom: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.15);">
-            <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #60a5fa; font-weight: 700;">⚡ Unified Operational Pipeline</div>
-            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-top: 4px;">Single-Click Credit Risk AutoML Engine</div>
-            <div style="font-size: 14px; color: #94a3b8; margin-top: 6px; line-height: 1.5;">
-                Upload your borrower panel loan CSV, specify what percentage should be defaulters in the analysis to cut off excess records, and launch the complete end-to-end pipeline with one click.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col_u1, col_u2 = st.columns([1, 1], gap="large")
-
-        with col_u1:
-            st.subheader("1. Upload Portfolio")
-            uploaded_file = st.file_uploader(
-                "Upload Panel Loan Data (.CSV):", 
-                type=["csv"], 
-                help="Upload CSV containing borrower panel repayments, principal amounts, tenures, and default flags."
-            )
-
-            col_sample_btn, col_clear_btn = st.columns([1, 1])
-            with col_sample_btn:
-                if st.button("📋 Use Sample Panel (25 Loans)", width='stretch', help="Loads built-in sample loan panel for instant testing"):
-                    st.session_state.raw_upload_df = pd.read_csv(io.StringIO(sample_csv))
-                    st.rerun()
-            with col_clear_btn:
-                if st.session_state.raw_upload_df is not None:
-                    if st.button("🗑️ Clear Uploaded File", width='stretch'):
-                        st.session_state.raw_upload_df = None
-                        st.session_state.validation_messages = []
-                        st.rerun()
-
+        st.markdown('<div class="mustard-bg-container">', unsafe_allow_html=True)
+        col_up, col_info = st.columns([1.3, 1], gap="large")
+        
+        with col_up:
+            st.markdown('<div class="upload-white-card">', unsafe_allow_html=True)
+            st.markdown('''
+            <div class="upload-icon-circle">↑</div>
+            <div class="upload-text-main">Click to select or drag & drop panel CSV file</div>
+            ''', unsafe_allow_html=True)
+            
+            uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
+            
             if uploaded_file is not None:
                 st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
-
-        raw_df = st.session_state.raw_upload_df
-        clean_df = None
-        is_valid = False
-
-        with col_u2:
-            st.subheader("2. Automated Segmentation & Defaulter Cutoff")
-            if raw_df is not None:
-                is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(raw_df)
-                st.session_state.validation_messages = msgs
-
-                if not is_valid:
-                    for m in msgs:
-                        st.error(m)
-                    target_pct = None
-                else:
-                    # Generate automated portfolio segmentation (Ticket size tertiles, tenor, categories)
-                    clean_df, seg_meta = generate_automated_segments(clean_df)
-
-                    n_tot = len(clean_df)
-                    n_def = int(clean_df['default_flag'].sum())
-                    n_non_def = n_tot - n_def
-                    orig_pct = (n_def / n_tot * 100.0) if n_tot > 0 else 0.0
-
-                    st.markdown(f"""
-                    <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px;">
-                        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;">Uploaded Portfolio Overview:</span><br>
-                        <b>{n_tot:,} Total Records</b> &nbsp;|&nbsp; 
-                        <span style="color: #ef4444; font-weight: 700;">{n_def:,} Defaulters</span> &nbsp;|&nbsp; 
-                        <span style="color: #22c55e; font-weight: 700;">{n_non_def:,} Performing Loans</span> &nbsp;|&nbsp; 
-                        <b>{orig_pct:.1f}% Overall Default Rate</b>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    available_dims = list(seg_meta["dimensions"].keys())
-                    if available_dims:
-                        default_dim_idx = available_dims.index(seg_meta["default_dimension"]) if seg_meta["default_dimension"] in available_dims else 0
-                        selected_dim = st.selectbox(
-                            "🏷️ Portfolio Segmentation Dimension:",
-                            options=available_dims,
-                            index=default_dim_idx,
-                            help="Select the portfolio dimension used for automated segmentation breakdown and stratified sampling."
-                        )
-                        active_dim_info = seg_meta["dimensions"][selected_dim]
-                        active_seg_col = active_dim_info["col"]
-                        active_breakdown = active_dim_info["breakdown"]
-
-                        # Render segment breakdown cards
-                        seg_cols = st.columns(min(len(active_breakdown), 4))
-                        for i, s in enumerate(active_breakdown):
-                            col_target = seg_cols[i % len(seg_cols)]
-                            with col_target:
-                                st.markdown(f"""
-                                <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; text-align: center;">
-                                    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">{s['segment']}</div>
-                                    <div style="font-size: 16px; font-weight: 800; color: #f8fafc; margin: 2px 0;">{s['count']:,} <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">loans</span></div>
-                                    <div style="font-size: 11px; color: #ef4444; font-weight: 700;">{s['defaulters']} def ({s['default_rate']:.1f}%)</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                        # Scope selector: All Segments vs Focus on single segment
-                        scope_options = [f"🌐 All Segments (Stratified by {selected_dim})"] + [f"🎯 Focus on: {s['segment']}" for s in active_breakdown]
-                        selected_scope = st.selectbox(
-                            "🎯 Analysis Scope for Segmentation:",
-                            options=scope_options,
-                            index=0,
-                            help="Choose whether to analyze the full portfolio with balanced stratified representation across segments, or isolate analysis to a single segment."
-                        )
-
-                        is_focused = selected_scope.startswith("🎯 Focus on: ")
-                        if is_focused:
-                            focused_segment_name = selected_scope.replace("🎯 Focus on: ", "")
-                            working_df = clean_df[clean_df[active_seg_col] == focused_segment_name].copy()
-                            stratify_target = None
-                            scope_label = focused_segment_name
-                        else:
-                            working_df = clean_df.copy()
-                            stratify_target = active_seg_col
-                            scope_label = f"All Segments (Stratified by {selected_dim})"
-                    else:
-                        selected_dim = "None"
-                        selected_scope = "All Segments"
-                        working_df = clean_df.copy()
-                        stratify_target = None
-                        scope_label = "Full Portfolio"
-
-                    w_tot = len(working_df)
-                    w_def = int(working_df['default_flag'].sum())
-                    w_orig_pct = (w_def / w_tot * 100.0) if w_tot > 0 else 0.0
-
-                    keep_all_records = st.checkbox(
-                        "Keep all records without cutoff (Analyze selected scope as-is)", 
-                        value=False,
-                        help="Check this to bypass cutoff and evaluate 100% of records in the selected scope."
-                    )
-
-                    if not keep_all_records:
-                        default_slider_val = min(max(int(round(w_orig_pct)), 5), 50) if w_orig_pct > 0 else 20
-                        target_pct = st.slider(
-                            "🎯 What percentage should be defaulters in the analysis? (%):",
-                            min_value=1,
-                            max_value=99,
-                            value=default_slider_val,
-                            step=1,
-                            help="Specifies the proportion of defaulters in the analytical dataset. Excess records will be cut off to reach this exact percentage."
-                        )
-                        _, preview_stats = balance_portfolio_by_defaulter_pct(
-                            working_df, 
-                            target_pct,
-                            stratify_col=stratify_target
-                        )
-                        st.markdown(f"""
-                        <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 16px; margin-top: 8px;">
-                            <b style="color: #60a5fa;">✂️ Cutoff Preview [{scope_label}]:</b> Retaining <b>{preview_stats['kept_total']:,} records</b> 
-                            ({preview_stats['kept_def']:,} Defaulters + {preview_stats['kept_non_def']:,} Performing = <b>{preview_stats['actual_pct']:.1f}% Defaulters</b>).<br>
-                            <span style="color: #f59e0b; font-weight: 600;">Cutting off {preview_stats['cut_off']:,} excess records</span> to achieve the target ratio.
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        target_pct = None
-                        st.info(f"ℹ️ Full dataset retained [{scope_label}]: {w_tot:,} records evaluated at the natural {w_orig_pct:.1f}% default rate.")
-
+                st.markdown(f'<div class="upload-text-sub">Example file loaded: {uploaded_file.name}</div>', unsafe_allow_html=True)
+            elif st.session_state.raw_upload_df is not None:
+                st.markdown('<div class="upload-text-sub">Example file loaded: from cache</div>', unsafe_allow_html=True)
             else:
-                st.info("👈 Please upload a loan panel CSV (or click 'Use Sample Panel') to configure analysis.")
-                target_pct = None
-
+                st.markdown('<div class="upload-text-sub" style="opacity: 0;">No file loaded</div>', unsafe_allow_html=True)
+            
+            st.markdown('''
+            <div class="upload-footer">
+                <span>ⓘ Need baseline template format?</span>
+                <span style="color: #4f46e5; cursor: pointer;">↓ Download Sample Template</span>
+            </div>
+            ''', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+        with col_info:
+            st.markdown('''
+            <div class="blue-info-card">
+                <div class="blue-info-title">What is happening<br>with your data?</div>
+                <div class="blue-info-text">
+                    When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
+                    <span class="blue-info-highlight">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
+                    Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive
+                </div>
+                <div class="blue-info-link">Read Data Governance</div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Anonymize Checkbox
+        col_cb1, col_cb2 = st.columns([1.5, 4])
+        with col_cb1:
+            st.markdown('<div class="anonymize-row"><span class="anonymize-label">Anonymize your data?</span>', unsafe_allow_html=True)
+        with col_cb2:
+            st.markdown('<div style="margin-top: 15px;">', unsafe_allow_html=True)
+            anonymize = st.checkbox("Anonymize", label_visibility="collapsed")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
         st.write("")
-
-        # Advanced Pipeline Settings (Collapsible Expander)
-        with st.expander("⚙️ Advanced Pipeline Configuration (Jurisdiction, Alternative Feeds, Metrics & Ensembling)", expanded=False):
-            cfg_col1, cfg_col2, cfg_col3 = st.columns(3)
-            with cfg_col1:
-                st.markdown("**Jurisdiction Matching**")
-                country_list = list(COUNTRY_MAPPING.keys())
-                default_idx = country_list.index("Kenya") if "Kenya" in country_list else 0
-                selected_country_name = st.selectbox("Country Jurisdiction:", country_list, index=default_idx, help="Select national jurisdiction for macroeconomic and regulatory matching.")
-                selected_country_code = COUNTRY_MAPPING[selected_country_name]
-
-            with cfg_col2:
-                st.markdown("**Alternative Data Feeds**")
-                available_files = [f for f in os.listdir(ALTERNATIVE_DATA_DIR) if f.endswith(('.db', '.csv'))] if os.path.exists(ALTERNATIVE_DATA_DIR) else []
-                selected_layers = []
-                for f in available_files:
-                    if st.checkbox(f"Join `{f}` (Macro GCP)", value=(f == 'macro_layer.db'), key=f"feed_{f}"):
-                        selected_layers.append(f)
-
-            with cfg_col3:
-                st.markdown("**AutoML & Explainability**")
-                optimize_metric = st.selectbox("Optimization Metric:", ["PR-AUC", "ROC-AUC"], index=0, help="PR-AUC is prioritized for imbalanced credit default detection, while ROC-AUC measures discrimination across all decision thresholds.")
-                tune_toggle = st.checkbox("Optuna Hyperparameter Tuning", value=True)
-                ensemble_toggle = st.checkbox("Soft-Voting Ensemble (GBDT + TabFM)", value=True)
-                auto_prune_toggle = st.checkbox("Auto-prune noisy features (IV < 0.02)", value=True)
-
-        if raw_df is not None and is_valid:
-            st.write("")
-            btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
-            with btn_col2:
-                run_pipeline_btn = st.button(
-                    "🚀 Ingest, Balance Portfolio & Run Full AutoML Pipeline",
-                    type="primary",
-                    width='stretch',
-                    help="Executes quality gate, balances defaulter ratio, joins alternative data, screens IV, and trains PyCaret champion models in one single click."
-                )
-
-            if run_pipeline_btn:
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-
-                def update_progress(pct: int, msg: str):
+        
+        # RUN TOOL Button
+        st.markdown('<div class="run-tool-btn">', unsafe_allow_html=True)
+        run_btn = st.button("RUN TOOL", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        status_text = st.empty()
+        progress_bar = st.empty()
+        
+        if run_btn:
+            if st.session_state.raw_upload_df is None:
+                status_text.error("Please upload a file first!")
+            else:
+                def update_progress(pct, msg):
                     progress_bar.progress(pct)
-                    status_text.markdown(f"**Status:** {msg}")
+                    status_text.markdown(f"<div class='tool-loading-text'>{msg}</div>", unsafe_allow_html=True)
 
                 try:
-                    # 1. Defaulter Ratio Balancing & Cutoff
-                    update_progress(10, f"Balancing portfolio to target defaulter percentage ({'natural rate' if keep_all_records else str(target_pct) + '%'}) and cutting off excess records...")
-                    balanced_df, cutoff_stats = balance_portfolio_by_defaulter_pct(
-                        working_df, 
-                        None if keep_all_records else target_pct,
-                        stratify_col=stratify_target
-                    )
-                    cutoff_stats["segment_dimension"] = selected_dim
-                    cutoff_stats["analysis_scope"] = scope_label
+                    update_progress(10, "Validating data...")
+                    is_valid, msgs, clean_df, dlq = CreditRiskDataValidator.validate_ingestion_payload(st.session_state.raw_upload_df)
+                    st.session_state.validation_messages = msgs
 
-                    balanced_df['session_id'] = st.session_state.session_id
-                    balanced_df['country_code'] = selected_country_code
-                    st.session_state.primary_df = balanced_df.copy()
-                    st.session_state.cutoff_stats = cutoff_stats
+                    if not is_valid:
+                        for m in msgs:
+                            st.error(m)
+                    else:
+                        update_progress(25, "Balancing portfolio...")
+                        balanced_df, cutoff_stats = balance_portfolio_by_defaulter_pct(clean_df, None, stratify_col=None)
+                        cutoff_stats["segment_dimension"] = "None"
+                        cutoff_stats["analysis_scope"] = "Full Portfolio"
 
-                    # 2. DuckDB In-Memory Ingestion
-                    update_progress(25, f"Ingesting {len(balanced_df):,} balanced records into DuckDB ephemeral RAM...")
-                    st.session_state.duck_conn.register('temp_df', balanced_df)
-                    st.session_state.duck_conn.execute("CREATE OR REPLACE TABLE ml_features AS SELECT * FROM temp_df")
+                        balanced_df['session_id'] = st.session_state.session_id
+                        balanced_df['country_code'] = "KEN" # Default
+                        st.session_state.primary_df = balanced_df.copy()
+                        st.session_state.cutoff_stats = cutoff_stats
 
-                    # 3. Alternative Data Layering
-                    update_progress(40, "Executing vectorized in-memory joins with alternative macro feeds...")
-                    layered_df = apply_macro_layers(
-                        st.session_state.duck_conn,
-                        selected_layers,
-                        ALTERNATIVE_DATA_DIR
-                    )
-                    st.session_state.final_layered_df = layered_df.copy()
+                        update_progress(40, "Ingesting into DuckDB...")
+                        st.session_state.duck_conn.register('temp_df', balanced_df)
+                        st.session_state.duck_conn.execute("CREATE OR REPLACE TABLE ml_features AS SELECT * FROM temp_df")
 
-                    # 4. Information Value (IV) & Pruning
-                    update_progress(55, "Calculating Information Value (IV) & cataloging feature bands...")
-                    iv_df = calculate_portfolio_iv(layered_df, target="default_flag")
-                    update_iv_metadata(st.session_state.duck_conn, iv_df)
-                    st.session_state.iv_df = iv_df
+                        update_progress(55, "Joining macro data...")
+                        layered_df = apply_macro_layers(st.session_state.duck_conn, ['macro_layer.db'], ALTERNATIVE_DATA_DIR)
+                        st.session_state.final_layered_df = layered_df.copy()
 
-                    if auto_prune_toggle:
-                        valid_features = iv_df[iv_df["Information Value (IV)"] >= 0.02]["Feature Name"].tolist() + ["default_flag"]
-                        for col in ["loan_no", "borrower_id", "session_id", "country_code", "loan_date", "due_date", "payoff_date", "loan_ticket_segment", "loan_tenor_segment", "amount", "tenure_days"]:
-                            if col in st.session_state.final_layered_df.columns and col not in valid_features:
-                                valid_features.append(col)
-                        st.session_state.final_layered_df = st.session_state.final_layered_df[valid_features]
+                        update_progress(70, "Calculating IV...")
+                        iv_df = calculate_portfolio_iv(layered_df, target="default_flag")
+                        update_iv_metadata(st.session_state.duck_conn, iv_df)
+                        st.session_state.iv_df = iv_df
 
-                    # 5. PyCaret & TabFM AutoML Engine
-                    update_progress(70, "Dispatching candidate classifiers via AutoML Engine & Optuna...")
-                    results = run_automl_pipeline(
-                        st.session_state.final_layered_df,
-                        optimize_metric=optimize_metric,
-                        tune_hyperparams=tune_toggle,
-                        create_ensemble=ensemble_toggle,
-                        progress_callback=lambda p, m: update_progress(int(70 + (p * 0.28)), m)
-                    )
+                        update_progress(85, "Training models...")
+                        results = run_automl_pipeline(
+                            st.session_state.final_layered_df,
+                            optimize_metric="PR-AUC",
+                            tune_hyperparams=True,
+                            create_ensemble=True,
+                            progress_callback=lambda p, m: update_progress(int(85 + (p * 0.15)), m)
+                        )
 
-                    st.session_state.automl_results = results
-                    st.session_state.data_ingested = True
-                    st.session_state.layers_applied = True
-                    st.session_state.training_completed = True
-                    update_progress(100, "🎉 Analysis completed! Rendering live dashboard...")
-                    st.rerun()
+                        st.session_state.automl_results = results
+                        st.session_state.data_ingested = True
+                        st.session_state.layers_applied = True
+                        st.session_state.training_completed = True
+                        update_progress(100, "Done!")
+                        st.rerun()
 
                 except Exception as e:
-                    status_text.error(f"❌ Pipeline Execution Error: {str(e)}")
+                    status_text.error(f"❌ Error: {str(e)}")
                     st.exception(e)
 
     else:
