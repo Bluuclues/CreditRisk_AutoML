@@ -447,18 +447,6 @@ with tab_engine:
                             update_progress(55, "Joining macro data...")
                             layered_df = apply_macro_layers(st.session_state.duck_conn, ['macro_layer.db'], ALTERNATIVE_DATA_DIR)
                             st.session_state.final_layered_df = layered_df.copy()
-
-        with col_info:
-            st.markdown('''
-            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
-            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
-                When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
-                <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
-                Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
-            </div>
-            <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
-            ''', unsafe_allow_html=True)
-
                         update_progress(70, "Calculating IV...")
                         iv_df = calculate_portfolio_iv(layered_df, target="default_flag")
                         update_iv_metadata(st.session_state.duck_conn, iv_df)
@@ -483,6 +471,17 @@ with tab_engine:
                 except Exception as e:
                     status_text.error(f"❌ Error: {str(e)}")
                     st.exception(e)
+
+        with col_info:
+            st.markdown('''
+            <div style="font-size: 32px; font-weight: 900; margin-bottom: 15px; font-family: 'DM Sans', sans-serif; color: #ffffff; line-height: 1.2;">What is happening<br>with your data?</div>
+            <div style="font-size: 15px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
+                When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
+                <span style="color: #fcd34d; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
+                Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
+            </div>
+            <div style="margin-top: 25px; font-size: 13px; color: #e2e8f0; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
+            ''', unsafe_allow_html=True)
 
     else:
         # ==============================================================================
