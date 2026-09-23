@@ -252,37 +252,6 @@ st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
 
 # ==============================================================================
-# TOP CANVAS HEADER (PERSISTENT ACROSS TABS)
-# ==============================================================================
-top_header_col1, top_header_col2 = st.columns([1, 1], gap="large")
-
-with top_header_col1:
-    st.markdown('<div class="massive-title">CREDIT RISK<br>AUTOML</div>', unsafe_allow_html=True)
-    st.markdown("""
-    **Kenya Bankers Association (KBA) Credit Scoring & Alternative Data Initiative**  
-    *Developed by Francis Nyangoma, Linda Kimilu, and Shirleen Chege.*
-    
-    This end-to-end Automated Machine Learning (AutoML) platform evaluates thin-file and informal sector borrowers by **fusion of panel repayment records with multi-source alternative data**.
-    """)
-
-with top_header_col2:
-    st.info("🔒 **Privacy Guarantee:** Customer data is processed in ephemeral RAM. Non-reversible SHA-256 pseudonymization protects individual borrower identities (Kenya DPA 2019).")
-    
-    with st.popover("ℹ️ Ephemeral Architecture & Privacy Standards"):
-        st.markdown("""
-        ### 🔒 Security, Ephemeral RAM & Regulatory Compliance
-        
-        * **Zero-Persistence Guarantee:**  
-          Uploaded loan portfolios and borrower telemetry are held strictly in temporary RAM (`duckdb.connect(':memory:')`). No persistent database or borrower record is saved to disk.
-        * **Salted SHA-256 Pseudonymization:**  
-          Primary customer identifiers (National ID, MSISDN) are converted into non-reversible hashes:
-          $$\\text{Pseudonymized ID} = \\text{HMAC-SHA256}(\\text{Identifier}, \\text{Salt})$$
-        * **Session Isolation:**  
-          Each session receives an ephemeral UUID (`uuid.uuid4()`). Closing the browser or resetting the session instantly wipes the in-memory DuckDB warehouse, fully complying with **Kenya Data Protection Act (DPA 2019)** and **CBK Digital Credit Provider (DCP) Regulations 2022**.
-        """)
-
-
-# ==============================================================================
 # TOP-LEVEL TWO-TAB NAVIGATION
 # ==============================================================================
 tab_engine, tab_sources = st.tabs([
@@ -295,54 +264,15 @@ tab_engine, tab_sources = st.tabs([
 # TAB 1: CREDIT RISK AUTOML ENGINE (OPERATIONAL WORKFLOW)
 # ##############################################################################
 with tab_engine:
-
-    # ==============================================================================
-    # SECTION 1: HEADER & PORTFOLIO SETUP (TOP CANVAS)
-    # ==============================================================================
-    with st.expander("📄 View Data Upload Guidelines & Template", expanded=False):
-        st.markdown("""
-        Uploaded `.csv` files must contain standard credit panel features:
-        * `borrower_id`: Unique client identifier.
-        * `amount`: Requested principal amount (numeric KES).
-        * `tenure_days`: Duration in days.
-        * `default_flag`: Target Variable (`1` = Defaulted, `0` = Performing).
-        * `loan_date`: Origination date (used for temporal macro joins).
-        """)
-        
-        sample_csv = (
-            "borrower_id,borrower_type,loan_no,loan_date,due_date,payoff_date,tenure_days,amount,default_flag,country_code\n"
-            "CUST-10492,Retail,LN-88101,2025-01-10,2025-02-10,2025-02-10,30,45000,0,KEN\n"
-            "CUST-10493,Retail,LN-88102,2025-01-14,2025-02-14,2025-02-28,30,50000,1,KEN\n"
-            "CUST-20831,SME,LN-88103,2025-01-15,2025-02-15,2025-02-10,30,120000,0,KEN\n"
-            "CUST-30119,Microfinance,LN-88104,2025-01-16,2025-02-16,2025-02-16,30,25000,0,KEN\n"
-            "CUST-10494,Retail,LN-88105,2025-01-20,2025-03-20,2025-03-15,60,75000,0,KEN\n"
-            "CUST-20832,SME,LN-88106,2025-01-22,2025-04-22,2025-04-20,90,150000,0,KEN\n"
-            "CUST-30120,Microfinance,LN-88107,2025-01-25,2025-02-25,2025-03-10,30,35000,1,KEN\n"
-            "CUST-10495,Retail,LN-88108,2025-02-01,2025-08-01,2025-07-28,180,80000,0,KEN\n"
-            "CUST-20833,SME,LN-88109,2025-02-05,2026-02-05,2026-02-01,360,200000,0,KEN\n"
-            "CUST-30121,Microfinance,LN-88110,2025-02-10,2025-03-10,2025-03-20,30,15000,1,KEN\n"
-            "CUST-10496,Retail,LN-88111,2025-02-12,2025-03-12,2025-03-10,30,60000,0,KEN\n"
-            "CUST-20834,SME,LN-88112,2025-02-14,2025-04-14,2025-04-10,60,110000,0,KEN\n"
-            "CUST-30122,Microfinance,LN-88113,2025-02-15,2025-03-30,2025-03-25,45,45000,0,KEN\n"
-            "CUST-10497,Retail,LN-88114,2025-02-18,2025-03-18,2025-04-05,30,30000,1,KEN\n"
-            "CUST-20835,SME,LN-88115,2025-02-20,2025-05-20,2025-05-18,90,180000,0,KEN\n"
-            "CUST-30123,Microfinance,LN-88116,2025-02-22,2025-03-22,2025-03-22,30,20000,0,KEN\n"
-            "CUST-10498,Retail,LN-88117,2025-02-25,2025-04-25,2025-04-20,60,95000,0,KEN\n"
-            "CUST-20836,SME,LN-88118,2025-03-01,2025-06-01,2025-06-15,90,135000,1,KEN\n"
-            "CUST-30124,Microfinance,LN-88119,2025-03-02,2025-04-02,2025-04-02,30,40000,0,KEN\n"
-            "CUST-10499,Retail,LN-88120,2025-03-05,2025-09-05,2025-09-01,180,65000,0,KEN\n"
-            "CUST-20837,SME,LN-88121,2025-03-08,2025-04-08,2025-04-05,30,85000,0,KEN\n"
-            "CUST-30125,Microfinance,LN-88122,2025-03-10,2025-04-10,2025-04-22,30,18000,1,KEN\n"
-            "CUST-10500,Retail,LN-88123,2025-03-12,2025-04-12,2025-04-10,30,55000,0,KEN\n"
-            "CUST-20838,SME,LN-88124,2025-03-14,2025-05-14,2025-05-10,60,160000,0,KEN\n"
-            "CUST-30126,Microfinance,LN-88125,2025-03-15,2025-04-15,2025-04-15,30,32000,0,KEN\n"
-        )
-        st.download_button(
-            label="⬇️ Download Sample Credit Panel CSV",
-            data=sample_csv,
-            file_name="kba_sample_credit_panel.csv",
-            mime="text/csv"
-        )
+    
+    # We define sample_csv here since we removed the expander that used to define it
+    sample_csv = (
+        "borrower_id,borrower_type,loan_no,loan_date,due_date,payoff_date,tenure_days,amount,default_flag,country_code\n"
+        "CUST-10492,Retail,LN-88101,2025-01-10,2025-02-10,2025-02-10,30,45000,0,KEN\n"
+        "CUST-10493,Retail,LN-88102,2025-01-14,2025-02-14,2025-02-28,30,50000,1,KEN\n"
+        "CUST-20831,SME,LN-88103,2025-01-15,2025-02-15,2025-02-10,30,120000,0,KEN\n"
+        "CUST-30119,Microfinance,LN-88104,2025-01-16,2025-02-16,2025-02-16,30,25000,0,KEN\n"
+    )
 
     if not st.session_state.training_completed:
         # ==============================================================================
@@ -350,13 +280,15 @@ with tab_engine:
         # ==============================================================================
         st.markdown('''
         <style>
-        /* Target the main wrapper */
-        div[data-testid="stVerticalBlock"]:has(> div > div > div > .anchor-main-wrapper) {
+        /* Target the Horizontal Block that holds the columns to be the mustard background */
+        div[data-testid="stHorizontalBlock"]:has(.anchor-main-wrapper) {
             background-color: #d8982a;
             border-radius: 12px;
             padding: 30px;
-            padding-bottom: 50px;
-            margin-bottom: 40px;
+            padding-bottom: 30px;
+            margin-bottom: 20px;
+            margin-top: 20px;
+            align-items: stretch;
         }
         
         /* Target the white card column */
@@ -374,8 +306,8 @@ with tab_engine:
             padding: 30px;
             color: white;
             box-shadow: -10px 10px 20px rgba(0,0,0,0.15);
-            /* Overlap the mustard background by shifting down */
-            transform: translateY(30px);
+            /* Pull the blue card down to overlap the bottom of the mustard background */
+            margin-bottom: -60px;
             z-index: 10;
         }
         
@@ -387,87 +319,88 @@ with tab_engine:
         }
         div[data-testid='stFileUploader'] section > button { display: none; }
         
-        /* Run tool button styling */
-        div[data-testid="stVerticalBlock"]:has(.anchor-run-btn) button {
-            background-color: #ffffff !important;
-            color: #475569 !important;
-            font-weight: 600 !important;
-            border: 1px solid #cbd5e1 !important;
+        /* Run tool button styling - Massive Orange Block */
+        button[kind="primary"] {
+            background-color: #d8982a !important;
+            color: #000 !important;
+            font-weight: 900 !important;
+            border: none !important;
             border-radius: 8px !important;
-            height: 50px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+            height: 60px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+            display: flex;
+            justify-content: flex-start;
+            padding-left: 30px !important;
         }
-        div[data-testid="stVerticalBlock"]:has(.anchor-run-btn) button p {
-            font-size: 14px !important;
-            letter-spacing: 0.5px;
+        button[kind="primary"] p {
+            font-size: 28px !important;
+            font-weight: 900 !important;
+            margin: 0;
         }
-        div[data-testid="stVerticalBlock"]:has(.anchor-run-btn) button:hover {
-            border-color: #94a3b8 !important;
-            color: #0f172a !important;
+        button[kind="primary"]:hover {
+            background-color: #c4821f !important;
         }
         </style>
         ''', unsafe_allow_html=True)
         
-        with st.container():
-            st.markdown('<span class="anchor-main-wrapper"></span>', unsafe_allow_html=True)
-            col_up, col_info = st.columns([1.3, 1], gap="large")
+        col_up, col_info = st.columns([1.3, 1], gap="large")
+        
+        with col_up:
+            st.markdown('<span class="anchor-main-wrapper"></span><span class="anchor-white-card"></span>', unsafe_allow_html=True)
             
-            with col_up:
-                st.markdown('<span class="anchor-white-card"></span>', unsafe_allow_html=True)
-                
-                st.markdown('''
-                <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px;">↑</div>
-                <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 15px;">Click to select or drag & drop panel CSV file</div>
-                ''', unsafe_allow_html=True)
-                
-                uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
-                
-                if uploaded_file is not None:
-                    st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
-                    st.markdown(f'<div style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block;">File loaded: {uploaded_file.name}</div>', unsafe_allow_html=True)
-                elif st.session_state.raw_upload_df is not None:
-                    st.markdown('<div style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block;">File loaded from cache</div>', unsafe_allow_html=True)
-                
-                # Bottom footer for sample template
-                col_c1, col_c2 = st.columns([1, 1])
-                with col_c1:
-                    st.markdown('<div style="margin-top:10px; font-size: 11px; color: #94a3b8;">ⓘ Need baseline template format?</div>', unsafe_allow_html=True)
-                with col_c2:
-                    st.download_button(
-                        label="↓ Download Sample Template",
-                        data=sample_csv,
-                        file_name="kba_sample_credit_panel.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                
-            with col_info:
-                st.markdown('<span class="anchor-blue-card"></span>', unsafe_allow_html=True)
-                st.markdown('''
-                <div style="font-size: 24px; font-weight: 800; margin-bottom: 15px; font-family: 'DM Sans', sans-serif;">What is happening<br>with your data?</div>
-                <div style="font-size: 14px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
-                    When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
-                    <span style="color: #f59e0b; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
-                    Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
-                </div>
-                <div style="margin-top: 20px; font-size: 12px; color: #cbd5e1; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
-                ''', unsafe_allow_html=True)
-                
+            st.markdown('''
+            <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-size: 16px; margin-bottom: 10px; margin-left: auto; margin-right: auto;">↑</div>
+            <div style="font-weight: 800; color: #0f172a; font-size: 14px; margin-bottom: 15px; text-align: center;">Click to select or drag & drop panel CSV file</div>
+            ''', unsafe_allow_html=True)
+            
+            uploaded_file = st.file_uploader("Upload", type=["csv"], label_visibility="collapsed")
+            
+            if uploaded_file is not None:
+                st.session_state.raw_upload_df = pd.read_csv(uploaded_file)
+                st.markdown(f'<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded: {uploaded_file.name}</span></div>', unsafe_allow_html=True)
+            elif st.session_state.raw_upload_df is not None:
+                st.markdown('<div style="text-align: center;"><span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">File loaded from cache</span></div>', unsafe_allow_html=True)
+            
+            st.write("")
+            # Bottom footer for sample template
+            col_c1, col_c2 = st.columns([1, 1])
+            with col_c1:
+                st.markdown('<div style="margin-top:10px; font-size: 11px; color: #94a3b8;">ⓘ Need baseline template format?</div>', unsafe_allow_html=True)
+            with col_c2:
+                st.download_button(
+                    label="↓ Download Sample Template",
+                    data=sample_csv,
+                    file_name="kba_sample_credit_panel.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            
+        with col_info:
+            st.markdown('<span class="anchor-blue-card"></span>', unsafe_allow_html=True)
+            st.markdown('''
+            <div style="font-size: 24px; font-weight: 800; margin-bottom: 15px; font-family: 'DM Sans', sans-serif;">What is happening<br>with your data?</div>
+            <div style="font-size: 14px; line-height: 1.6; font-family: 'Century Gothic', sans-serif; color: #e2e8f0;">
+                When you upload your financial data or portfolios into Credit Analyze, we process it entirely in temporary memory. 
+                <span style="color: #f59e0b; font-style: italic;">Think of it like reading a document on a whiteboard, once you close your browser or log out, the whiteboard is wiped completely clean.</span> 
+                Your financial files are never permanently saved to our servers, nor are they downloaded to your computer's hard drive.
+            </div>
+            <div style="margin-top: 20px; font-size: 12px; color: #cbd5e1; text-decoration: underline; cursor: pointer;">Read Data Governance</div>
+            ''', unsafe_allow_html=True)
+            
         # Anonymize Checkbox
         col_cb1, col_cb2 = st.columns([1.5, 4])
         with col_cb1:
-            st.markdown('<div style="font-weight: 800; font-size: 18px; color: #000; font-family: \'DM Sans\', sans-serif; margin-top: 10px;">Anonymize your data?</div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-weight: 800; font-size: 18px; color: #000; font-family: \'DM Sans\', sans-serif; margin-top: 10px; padding-left: 20px;">Anonymize your data?</div>', unsafe_allow_html=True)
         with col_cb2:
             st.markdown('<div style="margin-top: 15px;">', unsafe_allow_html=True)
             anonymize = st.checkbox("Anonymize", label_visibility="collapsed")
             st.markdown('</div>', unsafe_allow_html=True)
             
         st.write("")
+        st.write("")
         
         # RUN TOOL Button
-        with st.container():
-            st.markdown('<span class="anchor-run-btn"></span>', unsafe_allow_html=True)
-            run_btn = st.button("RUN TOOL", use_container_width=True)
+        run_btn = st.button("RUN TOOL", type="primary", use_container_width=True)
         
         status_text = st.empty()
         progress_bar = st.empty()
