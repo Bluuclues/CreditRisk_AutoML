@@ -210,7 +210,10 @@ with st.sidebar:
     st.markdown("<hr style='margin-top: 30px; margin-bottom: 15px; border-color: #2c4a68;'>", unsafe_allow_html=True)
 
     user = st.session_state.get("current_user", {})
-    email = user.get("email", "Authenticated User")
+    if isinstance(user, dict):
+        email = user.get("email", "Authenticated User")
+    else:
+        email = getattr(user, "email", "Authenticated User")
 
     st.markdown(f"""
     <div style="background-color: #1a3650; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #2c4a68;">
