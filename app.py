@@ -1053,238 +1053,231 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
                 """, unsafe_allow_html=True)
 
             st.write("---")
-            st.subheader("📥 Import Custom Alternative Data")
-            st.markdown("Upload your own custom alternative datasets (CSV or Excel) to merge them into the global feature store catalog for the AutoML pipeline.")
             
-            uploaded_alt = st.file_uploader("Upload Alternative Data Dataset", type=['csv', 'xlsx'], key="alt_data_upload")
-            if uploaded_alt:
-                st.success(f"✅ Successfully ingested `{uploaded_alt.name}`! It is now pending metadata tagging and feature cataloging.")
-                try:
-                    if uploaded_alt.name.endswith('.csv'):
-                        df_up = pd.read_csv(uploaded_alt, nrows=5)
-                    else:
-                        df_up = pd.read_excel(uploaded_alt, nrows=5)
-                    st.dataframe(df_up, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Error reading file preview: {e}")
-                    
-            st.write("---")
-            st.subheader("📋 Alternative Data Indicator Catalog")
+            with st.expander("📥 1. Import Custom Alternative Data (Data Selector)", expanded=True):
+                st.markdown("Upload your own custom alternative datasets (CSV or Excel) to merge them into the global feature store catalog for the AutoML pipeline.")
+                
+                uploaded_alt = st.file_uploader("Upload Alternative Data Dataset", type=['csv', 'xlsx'], key="alt_data_upload")
+                if uploaded_alt:
+                    st.success(f"✅ Successfully ingested `{uploaded_alt.name}`! It is now pending metadata tagging and feature cataloging.")
+                    try:
+                        if uploaded_alt.name.endswith('.csv'):
+                            df_up = pd.read_csv(uploaded_alt, nrows=5)
+                        else:
+                            df_up = pd.read_excel(uploaded_alt, nrows=5)
+                        st.dataframe(df_up, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error reading file preview: {e}")
+            
+            with st.expander("📋 2. Alternative Data Indicator Catalog", expanded=False):
 
-            # Filters
-            col_search, col_cat, col_stat = st.columns([2, 1, 1])
-            with col_search:
-                search_term = st.text_input("🔍 Search Variable, Source, or Method:", placeholder="e.g. GDP, Food, EPRA, M-Pesa, OSM, Poverty...", help="Filter data variables by name, endpoint, authority, or risk rationale.")
-            with col_cat:
-                all_categories = ["All Domains"] + sorted(list(set(d["category"] for d in DATA_SOURCES_CATALOG)))
-                selected_category = st.selectbox("Filter Domain:", all_categories, help="Filter indicators by categorical domain.")
-            with col_stat:
-                all_statuses = ["All Statuses"] + sorted(list(set(d["status"] for d in DATA_SOURCES_CATALOG)))
-                selected_status = st.selectbox("Filter Status:", all_statuses, help="Filter indicators by live ingestion readiness status.")
+                # Filters
+                col_search, col_cat, col_stat = st.columns([2, 1, 1])
+                with col_search:
+                    search_term = st.text_input("🔍 Search Variable, Source, or Method:", placeholder="e.g. GDP, Food, EPRA, M-Pesa, OSM, Poverty...", help="Filter data variables by name, endpoint, authority, or risk rationale.")
+                with col_cat:
+                    all_categories = ["All Domains"] + sorted(list(set(d["category"] for d in DATA_SOURCES_CATALOG)))
+                    selected_category = st.selectbox("Filter Domain:", all_categories, help="Filter indicators by categorical domain.")
+                with col_stat:
+                    all_statuses = ["All Statuses"] + sorted(list(set(d["status"] for d in DATA_SOURCES_CATALOG)))
+                    selected_status = st.selectbox("Filter Status:", all_statuses, help="Filter indicators by live ingestion readiness status.")
 
-            # Filter records
-            filtered_data = []
-            for item in DATA_SOURCES_CATALOG:
-                if selected_category != "All Domains" and item["category"] != selected_category:
-                    continue
-                if selected_status != "All Statuses" and item["status"] != selected_status:
-                    continue
-                if search_term:
-                    q = search_term.lower()
-                    match = (
-                        q in item["variable"].lower()
-                        or q in item["collection_method"].lower()
-                        or q in item["reference"].lower()
-                        or q in item["category"].lower()
-                        or q in item["actuarial_rationale"].lower()
-                    )
-                    if not match:
+                # Filter records
+                filtered_data = []
+                for item in DATA_SOURCES_CATALOG:
+                    if selected_category != "All Domains" and item["category"] != selected_category:
                         continue
-                filtered_data.append(item)
-
-            # Build Display Table
-            table_rows = []
-            import random
-            random.seed(42) # Deterministic papers
-            
-            for item in filtered_data:
-                # Add research papers dynamically
-                papers = item.get("research_papers", random.randint(15, 450))
-                
-                table_rows.append({
-                    "Variable": item["variable"],
-                    "Domain Category": item["category"],
-                    "Research Papers": papers,
-                    "Collection Method": item["collection_method"],
-                    "Reference / Authority": item["reference"],
-                    "Reference Link": item["url"],
-                    "Update Cadence": item["last_updated"],
-                    "Status": f"🟡 {item['status']}" if item['status'] == "Pending" else f"🟢 {item['status']}"
-                })
-
-            df_sources = pd.DataFrame(table_rows)
-
-            if not df_sources.empty:
-                # Use data_editor instead of dataframe so user can type and add new data
-                edited_df = st.data_editor(
-                    df_sources,
-                    num_rows="dynamic",
-                    column_config={
-                        "Reference Link": st.column_config.LinkColumn(
-                            "Source Link",
-                            display_text="Open Portal ↗"
-                        ),
-                        "Variable": st.column_config.TextColumn(
-                            "Variable Name",
-                            width="medium"
-                        ),
-                        "Collection Method": st.column_config.TextColumn(
-                            "Collection Method & Endpoint",
-                            width="large"
-                        ),
-                        "Research Papers": st.column_config.NumberColumn(
-                            "Research Papers",
-                            help="Number of academic/industry papers citing this variable",
-                            format="%d"
+                    if selected_status != "All Statuses" and item["status"] != selected_status:
+                        continue
+                    if search_term:
+                        q = search_term.lower()
+                        match = (
+                            q in item["variable"].lower()
+                            or q in item["collection_method"].lower()
+                            or q in item["reference"].lower()
+                            or q in item["category"].lower()
+                            or q in item["actuarial_rationale"].lower()
                         )
-                    },
-                    width='stretch',
-                    height=380,
-                    key="data_sources_editor"
-                )
+                        if not match:
+                            continue
+                    filtered_data.append(item)
 
-                col_dl1, col_dl2 = st.columns(2)
-                with col_dl1:
-                    sources_csv = edited_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 Download Sources Catalog (.CSV)",
-                        data=sources_csv,
-                        file_name="kba_alternative_data_sources.csv",
-                        mime="text/csv",
-                        width='stretch'
+                # Build Display Table
+                table_rows = []
+                import random
+                random.seed(42) # Deterministic papers
+                
+                for item in filtered_data:
+                    # Add research papers dynamically
+                    papers = item.get("research_papers", random.randint(15, 450))
+                    
+                    table_rows.append({
+                        "Variable": item["variable"],
+                        "Domain Category": item["category"],
+                        "Research Papers": papers,
+                        "Collection Method": item["collection_method"],
+                        "Reference / Authority": item["reference"],
+                        "Reference Link": item["url"],
+                        "Update Cadence": item["last_updated"],
+                        "Status": f"🟡 {item['status']}" if item['status'] == "Pending" else f"🟢 {item['status']}"
+                    })
+
+                df_sources = pd.DataFrame(table_rows)
+
+                if not df_sources.empty:
+                    # Use data_editor instead of dataframe so user can type and add new data
+                    edited_df = st.data_editor(
+                        df_sources,
+                        num_rows="dynamic",
+                        column_config={
+                            "Reference Link": st.column_config.LinkColumn(
+                                "Source Link",
+                                display_text="Open Portal ↗"
+                            ),
+                            "Variable": st.column_config.TextColumn(
+                                "Variable Name",
+                                width="medium"
+                            ),
+                            "Collection Method": st.column_config.TextColumn(
+                                "Collection Method & Endpoint",
+                                width="large"
+                            ),
+                            "Research Papers": st.column_config.NumberColumn(
+                                "Research Papers",
+                                help="Number of academic/industry papers citing this variable",
+                                format="%d"
+                            )
+                        },
+                        width='stretch',
+                        height=380,
+                        key="data_sources_editor"
                     )
-                with col_dl2:
-                    buf_src = io.BytesIO()
-                    with pd.ExcelWriter(buf_src, engine='openpyxl') as writer:
-                        edited_df.to_excel(writer, index=False, sheet_name='Data_Sources')
-                    st.download_button(
-                        label="📥 Download Sources Catalog (.Excel)",
-                        data=buf_src.getvalue(),
-                        file_name="kba_alternative_data_sources.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        width='stretch'
+
+                    col_dl1, col_dl2 = st.columns(2)
+                    with col_dl1:
+                        sources_csv = edited_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Download Sources Catalog (.CSV)",
+                            data=sources_csv,
+                            file_name="kba_alternative_data_sources.csv",
+                            mime="text/csv",
+                            width='stretch'
+                        )
+                    with col_dl2:
+                        buf_src = io.BytesIO()
+                        with pd.ExcelWriter(buf_src, engine='openpyxl') as writer:
+                            edited_df.to_excel(writer, index=False, sheet_name='Data_Sources')
+                        st.download_button(
+                            label="📥 Download Sources Catalog (.Excel)",
+                            data=buf_src.getvalue(),
+                            file_name="kba_alternative_data_sources.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            width='stretch'
+                        )
+                else:
+                    st.info("No data sources match the selected search query or filters.")
+
+            with st.expander("🧮 3. Variable Discoverability Matrix & Evaluation Framework", expanded=False):
+            
+                # Quadrant Scatter Plot
+                import random
+                random.seed(42)
+                
+                scatter_data = []
+                for item in DATA_SOURCES_CATALOG:
+                    scatter_data.append({
+                        "Variable": item["variable"],
+                        "Collection Hardness": random.uniform(10, 90),
+                        "Evidence & Value": random.uniform(10, 90),
+                        "Category": item["category"]
+                    })
+                
+                df_scatter = pd.DataFrame(scatter_data)
+                
+                fig_quad = px.scatter(
+                    df_scatter, 
+                    x="Collection Hardness", 
+                    y="Evidence & Value", 
+                    text="Variable",
+                    color="Category",
+                    hover_data=["Variable"]
+                )
+                
+                # Style the quadrant chart
+                fig_quad.update_traces(textposition='top center', marker=dict(size=10, opacity=0.8))
+                fig_quad.add_hline(y=50, line_dash="dash", line_color="orange", opacity=0.7)
+                fig_quad.add_vline(x=50, line_dash="dash", line_color="orange", opacity=0.7)
+                
+                fig_quad.update_layout(
+                    height=450,
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    xaxis=dict(range=[0, 100], title="COLLECTION HARDNESS (Low → High)", showgrid=False),
+                    yaxis=dict(range=[0, 100], title="EVIDENCE & VALUE (Low → High)", showgrid=False),
+                    showlegend=False,
+                    plot_bgcolor="white"
+                )
+                
+                st.plotly_chart(fig_quad, use_container_width=True)
+                
+                st.markdown("#### QUANTITATIVE EVALUATION METRICS (IV & WoE)")
+                
+                col_iv, col_woe = st.columns(2)
+                with col_iv:
+                    st.markdown(f"""
+                    <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; border-top: 4px solid #ea580c; height: 100%;">
+                        <h5 style="color: #431407; margin-bottom: 8px;">Information Value (IV)</h5>
+                        <p style="color: #78350f; font-size: 14px; margin: 0;">Measures overall predictive power of a given variable in distinguishing between good and bad loans within the automated machine learning environment.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                with col_woe:
+                    st.markdown(f"""
+                    <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; border-top: 4px solid #ea580c; height: 100%;">
+                        <h5 style="color: #431407; margin-bottom: 8px;">Weight of Evidence (WoE)</h5>
+                        <p style="color: #78350f; font-size: 14px; margin: 0;">Calculates predictive strength of each attribute within a variable, dynamically scaling IV to ensure only robust, responsive variables enter the final ensemble.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+            with st.expander("📈 4. Feature Variability & Covariance Matrix", expanded=False):
+            
+                # Feature Selection
+                all_vars = [item["variable"] for item in DATA_SOURCES_CATALOG]
+                default_vars = all_vars[:4] if len(all_vars) >= 4 else all_vars
+                
+                selected_vars = st.multiselect(
+                    "Select Input Variables:",
+                    options=all_vars,
+                    default=default_vars,
+                    key="var_selection"
+                )
+                
+                if selected_vars:
+                    # Generate a mock variability/correlation matrix
+                    np.random.seed(42)
+                    var_matrix = pd.DataFrame(
+                        np.random.rand(len(selected_vars), len(selected_vars)),
+                        index=selected_vars,
+                        columns=selected_vars
                     )
-            else:
-                st.info("No data sources match the selected search query or filters.")
-
-            st.write("---")
-
-            # --- NEW: Discoverability & Variability Matrix ---
-            st.markdown("### 🧮 Variable Discoverability Matrix & Evaluation Framework")
-            
-            # Quadrant Scatter Plot
-            import random
-            random.seed(42)
-            
-            scatter_data = []
-            for item in DATA_SOURCES_CATALOG:
-                scatter_data.append({
-                    "Variable": item["variable"],
-                    "Collection Hardness": random.uniform(10, 90),
-                    "Evidence & Value": random.uniform(10, 90),
-                    "Category": item["category"]
-                })
-            
-            df_scatter = pd.DataFrame(scatter_data)
-            
-            fig_quad = px.scatter(
-                df_scatter, 
-                x="Collection Hardness", 
-                y="Evidence & Value", 
-                text="Variable",
-                color="Category",
-                hover_data=["Variable"]
-            )
-            
-            # Style the quadrant chart
-            fig_quad.update_traces(textposition='top center', marker=dict(size=10, opacity=0.8))
-            fig_quad.add_hline(y=50, line_dash="dash", line_color="orange", opacity=0.7)
-            fig_quad.add_vline(x=50, line_dash="dash", line_color="orange", opacity=0.7)
-            
-            fig_quad.update_layout(
-                height=450,
-                margin=dict(l=20, r=20, t=20, b=20),
-                xaxis=dict(range=[0, 100], title="COLLECTION HARDNESS (Low → High)", showgrid=False),
-                yaxis=dict(range=[0, 100], title="EVIDENCE & VALUE (Low → High)", showgrid=False),
-                showlegend=False,
-                plot_bgcolor="white"
-            )
-            
-            st.plotly_chart(fig_quad, use_container_width=True)
-            
-            st.markdown("#### QUANTITATIVE EVALUATION METRICS (IV & WoE)")
-            
-            col_iv, col_woe = st.columns(2)
-            with col_iv:
-                st.markdown(f"""
-                <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; border-top: 4px solid #ea580c; height: 100%;">
-                    <h5 style="color: #431407; margin-bottom: 8px;">Information Value (IV)</h5>
-                    <p style="color: #78350f; font-size: 14px; margin: 0;">Measures overall predictive power of a given variable in distinguishing between good and bad loans within the automated machine learning environment.</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-            with col_woe:
-                st.markdown(f"""
-                <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; border-top: 4px solid #ea580c; height: 100%;">
-                    <h5 style="color: #431407; margin-bottom: 8px;">Weight of Evidence (WoE)</h5>
-                    <p style="color: #78350f; font-size: 14px; margin: 0;">Calculates predictive strength of each attribute within a variable, dynamically scaling IV to ensure only robust, responsive variables enter the final ensemble.</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.write("---")
-            
-            st.markdown("#### 2. Feature Variability & Covariance Matrix")
-            
-            # Feature Selection
-            all_vars = [item["variable"] for item in DATA_SOURCES_CATALOG]
-            default_vars = all_vars[:4] if len(all_vars) >= 4 else all_vars
-            
-            selected_vars = st.multiselect(
-                "Select Input Variables:",
-                options=all_vars,
-                default=default_vars,
-                key="var_selection"
-            )
-            
-            if selected_vars:
-                # Generate a mock variability/correlation matrix
-                np.random.seed(42)
-                var_matrix = pd.DataFrame(
-                    np.random.rand(len(selected_vars), len(selected_vars)),
-                    index=selected_vars,
-                    columns=selected_vars
-                )
-                # Make symmetric with 1s on diagonal
-                var_matrix = (var_matrix + var_matrix.T) / 2
-                np.fill_diagonal(var_matrix.values, 1.0)
-                
-                fig_var = px.imshow(
-                    var_matrix, 
-                    text_auto=".2f", 
-                    color_continuous_scale="RdBu_r", 
-                    aspect="auto",
-                    zmin=0, zmax=1
-                )
-                fig_var.update_layout(
-                    height=450, 
-                    margin=dict(l=0, r=0, t=30, b=0),
-                    title="Covariance & Variability Heatmap"
-                )
-                st.plotly_chart(fig_var, use_container_width=True)
-            else:
-                st.info("Please select at least one variable to generate the matrix.")
-                
-            st.write("---")
+                    # Make symmetric with 1s on diagonal
+                    var_matrix = (var_matrix + var_matrix.T) / 2
+                    np.fill_diagonal(var_matrix.values, 1.0)
+                    
+                    fig_var = px.imshow(
+                        var_matrix, 
+                        text_auto=".2f", 
+                        color_continuous_scale="RdBu_r", 
+                        aspect="auto",
+                        zmin=0, zmax=1
+                    )
+                    fig_var.update_layout(
+                        height=450, 
+                        margin=dict(l=0, r=0, t=30, b=0),
+                        title="Covariance & Variability Heatmap"
+                    )
+                    st.plotly_chart(fig_var, use_container_width=True)
+                else:
+                    st.info("Please select at least one variable to generate the matrix.")
 
             # Detailed Cards View
             with st.expander("🔍 Detailed Variable Specifications & Actuarial Risk Rationales", expanded=False):
