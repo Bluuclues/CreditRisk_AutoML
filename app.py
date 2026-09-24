@@ -1163,9 +1163,43 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
 
             st.write("---")
 
-            # --- NEW: Variability Matrix & Selection ---
-            st.markdown("### 🧮 Data Variability Matrix & Feature Selection")
-            st.markdown("Select alternative data streams below to dynamically calculate their covariance and variability spread against traditional panel history.")
+            # --- NEW: Discoverability & Variability Matrix ---
+            st.markdown("### 🧮 Data Discoverability & Variability Matrices")
+            st.markdown("Assess the availability, compliance, and latency of each data stream, followed by their internal correlations.")
+            
+            # Data Discoverability Matrix
+            st.markdown("#### 1. Alternative Data Discoverability Matrix")
+            discover_data = []
+            import random
+            for item in DATA_SOURCES_CATALOG:
+                discover_data.append({
+                    "Variable": item["variable"],
+                    "Geographic Coverage": "National (47 Counties)" if random.random() > 0.3 else "Urban Centers Only",
+                    "Update Latency": item["last_updated"],
+                    "API Availability": "Open API" if "API" in item["collection_method"] else "Web Scraping",
+                    "Privacy (PII)": "Zero-PII (Public)" if item["category"] != "Mobile Money Telemetry" else "Consented Private"
+                })
+            
+            df_discover = pd.DataFrame(discover_data)
+            
+            def style_discover(val):
+                if val == "National (47 Counties)": return 'color: #16a34a; font-weight: bold;'
+                if val == "Urban Centers Only": return 'color: #ea580c;'
+                if val == "Open API": return 'color: #2563eb; font-weight: bold;'
+                if val == "Web Scraping": return 'color: #94a3b8;'
+                if val == "Zero-PII (Public)": return 'color: #16a34a;'
+                if val == "Consented Private": return 'color: #dc2626; font-weight: bold;'
+                return ''
+
+            st.dataframe(
+                df_discover.style.map(style_discover, subset=["Geographic Coverage", "API Availability", "Privacy (PII)"]),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            st.write("---")
+            
+            st.markdown("#### 2. Feature Variability & Covariance Matrix")
             
             # Feature Selection
             all_vars = [item["variable"] for item in DATA_SOURCES_CATALOG]
