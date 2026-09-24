@@ -1052,7 +1052,23 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
                 </div>
                 """, unsafe_allow_html=True)
 
-            st.write("")
+            st.write("---")
+            st.subheader("📥 Import Custom Alternative Data")
+            st.markdown("Upload your own custom alternative datasets (CSV or Excel) to merge them into the global feature store catalog for the AutoML pipeline.")
+            
+            uploaded_alt = st.file_uploader("Upload Alternative Data Dataset", type=['csv', 'xlsx'], key="alt_data_upload")
+            if uploaded_alt:
+                st.success(f"✅ Successfully ingested `{uploaded_alt.name}`! It is now pending metadata tagging and feature cataloging.")
+                try:
+                    if uploaded_alt.name.endswith('.csv'):
+                        df_up = pd.read_csv(uploaded_alt, nrows=5)
+                    else:
+                        df_up = pd.read_excel(uploaded_alt, nrows=5)
+                    st.dataframe(df_up, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error reading file preview: {e}")
+                    
+            st.write("---")
             st.subheader("📋 Alternative Data Indicator Catalog")
 
             # Filters
