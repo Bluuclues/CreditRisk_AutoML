@@ -947,7 +947,7 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
                         '60 DPD (%)': [1.5, 1.8, 2.2, 1.0, 0.5],
                         '90+ DPD (%)': [4.2, 3.8, 4.5, 2.1, 0.8]
                     })
-                    fig_vin = px.bar(vintage_data, x='Origination Quarter', y=['30 DPD (%)', '60 DPD (%)', '90+ DPD (%)'], barmode='group')
+                    fig_vin = px.line(vintage_data, x='Origination Quarter', y=['30 DPD (%)', '60 DPD (%)', '90+ DPD (%)'], markers=True)
                     fig_vin.update_layout(height=350, legend_title="DPD Bucket", margin=dict(l=0, r=0, t=10, b=0))
                     st.plotly_chart(fig_vin, use_container_width=True)
 
