@@ -444,6 +444,12 @@ init_single_page_state()
 # AUTHENTICATION & ACCESS GATE
 # ==============================================================================
 if not st.session_state.get('authenticated', False):
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: none !important; }
+            [data-testid="collapsedControl"] { display: none !important; }
+        </style>
+    """, unsafe_allow_html=True)
     render_login_signup_page()
     st.stop()
 
