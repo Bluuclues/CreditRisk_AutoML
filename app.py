@@ -84,7 +84,8 @@ with st.sidebar:
             text-align: left !important;
             justify-content: flex-start !important;
             font-size: 14px !important;
-            padding: 8px 12px !important;
+            padding: 4px 10px !important;
+            min-height: 36px !important;
             border-radius: 6px !important;
             font-weight: 500 !important;
             width: 100% !important;
@@ -93,19 +94,30 @@ with st.sidebar:
             background-color: rgba(255,255,255,0.05) !important;
             color: white !important;
         }
-        /* Style Primary buttons in sidebar to look "active" */
+        /* Style Primary buttons in sidebar to look "active" with orange */
         [data-testid="stSidebar"] button[kind="primary"] {
-            background-color: rgba(255,255,255,0.15) !important;
+            background-color: #ea580c !important; /* Orange highlight */
             border: none !important;
             box-shadow: none !important;
             color: white !important;
             text-align: left !important;
             justify-content: flex-start !important;
             font-size: 14px !important;
-            padding: 8px 12px !important;
+            padding: 4px 10px !important;
+            min-height: 36px !important;
             border-radius: 6px !important;
             font-weight: 600 !important;
             width: 100% !important;
+        }
+        
+        /* Force left alignment on button inner text */
+        [data-testid="stSidebar"] button p, 
+        [data-testid="stSidebar"] button div[data-testid="stMarkdownContainer"] p {
+            text-align: left !important;
+            width: 100% !important;
+            margin: 0 !important;
+            justify-content: flex-start !important;
+            display: flex !important;
         }
         /* Expander headers */
         [data-testid="stSidebar"] [data-testid="stExpander"] summary {
