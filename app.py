@@ -78,10 +78,10 @@ with st.sidebar:
     </div>
     
     <style>
-        .sb-header { font-size: 12px; color: #94a3b8; margin-top: 20px; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sb-header {{ font-size: 12px; color: #94a3b8; margin-top: 20px; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }}
         
         /* Buttons inside sidebar as links */
-        [data-testid="stSidebar"] button[kind="secondary"] {
+        [data-testid="stSidebar"] button[kind="secondary"] {{
             background-color: transparent !important;
             border: none !important;
             box-shadow: none !important;
@@ -94,13 +94,13 @@ with st.sidebar:
             border-radius: 6px !important;
             font-weight: 500 !important;
             width: 100% !important;
-        }
-        [data-testid="stSidebar"] button[kind="secondary"]:hover {
+        }}
+        [data-testid="stSidebar"] button[kind="secondary"]:hover {{
             background-color: rgba(255,255,255,0.05) !important;
             color: white !important;
-        }
+        }}
         /* Style Primary buttons in sidebar to look "active" with orange */
-        [data-testid="stSidebar"] button[kind="primary"] {
+        [data-testid="stSidebar"] button[kind="primary"] {{
             background-color: #ea580c !important; /* Orange highlight */
             border: none !important;
             box-shadow: none !important;
@@ -113,24 +113,24 @@ with st.sidebar:
             border-radius: 6px !important;
             font-weight: 600 !important;
             width: 100% !important;
-        }
+        }}
         
         /* Force left alignment on button inner text */
         [data-testid="stSidebar"] button p, 
-        [data-testid="stSidebar"] button div[data-testid="stMarkdownContainer"] p {
+        [data-testid="stSidebar"] button div[data-testid="stMarkdownContainer"] p {{
             text-align: left !important;
             width: 100% !important;
             margin: 0 !important;
             justify-content: flex-start !important;
             display: flex !important;
             font-size: 13px !important;
-        }
+        }}
         /* Make buttons span full width */
-        [data-testid="stSidebar"] div[data-testid="stButton"] {
+        [data-testid="stSidebar"] div[data-testid="stButton"] {{
             width: 100% !important;
-        }
+        }}
         /* Expander headers */
-        [data-testid="stSidebar"] [data-testid="stExpander"] summary {
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary {{
             background-color: transparent !important;
             color: #94a3b8 !important;
             font-weight: 600 !important;
@@ -138,17 +138,17 @@ with st.sidebar:
             text-transform: uppercase !important;
             letter-spacing: 0.5px !important;
             padding: 10px 0px !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
+        }}
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {{
             color: white !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] {
+        }}
+        [data-testid="stSidebar"] [data-testid="stExpander"] {{
             border: none !important;
             background-color: transparent !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stVerticalBlock"] {
+        }}
+        [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stVerticalBlock"] {{
             gap: 0.2rem;
-        }
+        }}
     </style>
     """, unsafe_allow_html=True)
     
