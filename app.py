@@ -1599,11 +1599,11 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
 
 
         elif st.session_state.dash_view == 'Early Warning System':
-            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #2b5b7c; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>🚨</span> EARLY WARNING SYSTEM</div>', unsafe_allow_html=True)
-            st.info('Module under development...')
+            from views.early_warning import render_early_warning
+            render_early_warning()
         elif st.session_state.dash_view == 'Stress Testing':
-            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #2b5b7c; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>📉</span> STRESS TESTING</div>', unsafe_allow_html=True)
-            st.info('Module under development...')
+            from views.stress_testing import render_stress_testing
+            render_stress_testing()
         elif st.session_state.dash_view == 'Overall Segmentation':
             st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #2b5b7c; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>👥</span> OVERALL SEGMENTATION</div>', unsafe_allow_html=True)
             st.info('Module under development...')
