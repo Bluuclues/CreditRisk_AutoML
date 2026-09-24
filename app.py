@@ -119,7 +119,6 @@ with st.sidebar:
             width: 100% !important;
         }}
         
-        /* Force left alignment on button inner text */
         [data-testid="stSidebar"] button p, 
         [data-testid="stSidebar"] button div[data-testid="stMarkdownContainer"] p {{
             text-align: left !important;
@@ -127,6 +126,8 @@ with st.sidebar:
             margin: 0 !important;
             justify-content: flex-start !important;
             display: flex !important;
+            font-family: 'Century Gothic', 'Questrial', sans-serif !important;
+            text-transform: none !important;
         }}
         [data-testid="stSidebar"] button[kind="secondary"] p, 
         [data-testid="stSidebar"] button[kind="secondary"] div[data-testid="stMarkdownContainer"] p {{
