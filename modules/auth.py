@@ -114,7 +114,7 @@ def register_user(
             return False, f"An account with email '{clean_email}' already exists. Please log in.", None
 
     pwd_hash, salt = hash_password(password)
-    now_iso = datetime.now(timezone(timedelta(hours=3))).isoformat()
+    now_iso = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     
     # Calculate new ID safely
     if df.empty or 'id' not in df.columns or df['id'].dropna().empty:
@@ -194,7 +194,7 @@ def authenticate_user(email: str, password: str) -> Tuple[bool, str, Optional[Di
         return False, f"Account access is currently '{access_status}'. Please contact the KBA administrator.", None
 
     # Update last login timestamp
-    now_iso = datetime.now(timezone(timedelta(hours=3))).isoformat()
+    now_iso = datetime.now(timezone(timedelta(hours=3))).strftime("%Y-%m-%d %H:%M:%S")
     
     # Ensure index alignment to update the exact row
     df.loc[df['email'].astype(str).str.lower() == clean_email, 'last_login'] = now_iso
