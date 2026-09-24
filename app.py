@@ -34,8 +34,76 @@ st.set_page_config(
     page_title="KBA Credit Risk AutoML Engine",
     page_icon="🏦",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+
+with st.sidebar:
+    st.markdown("""
+    <style>
+        /* --- SIDEBAR STYLING --- */
+        [data-testid="stSidebar"] {
+            background-color: #0f2537 !important;
+        }
+        [data-testid="stSidebar"] * {
+            color: #e2e8f0 !important;
+        }
+        /* Selectbox inside sidebar */
+        [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+            background-color: #1a3650 !important;
+            border-color: #2c4a68 !important;
+            color: white !important;
+        }
+        [data-testid="stSidebar"] div[data-baseweb="select"] span {
+            color: white !important;
+        }
+        [data-testid="stSidebarNav"] {
+            display: none;
+        }
+        button[kind="header"] {
+            color: white !important;
+        }
+    </style>
+    
+    <div style="display: flex; align-items: center; margin-bottom: 30px;">
+        <span style="font-size: 28px; margin-right: 12px;">🎯</span>
+        <div>
+            <div style="font-weight: 800; font-size: 16px; color: white; line-height: 1.2;">Portfolio Risk Radar</div>
+            <div style="font-size: 11px; color: #94a3b8;">Early warning and risk intelligence</div>
+        </div>
+    </div>
+    
+    <style>
+        .sb-header { font-size: 12px; color: #94a3b8; margin-top: 20px; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sb-link { display: flex; align-items: center; padding: 10px 14px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; transition: background 0.2s; font-size: 14px; color: #cbd5e1; }
+        .sb-link:hover { background-color: rgba(255,255,255,0.05); color: white; }
+        .sb-link.active { background-color: rgba(255,255,255,0.15); font-weight: 600; color: white; }
+        .sb-link span.emoji { margin-right: 12px; font-size: 16px; opacity: 0.8; }
+        .sb-link.active span.emoji { opacity: 1; }
+    </style>
+    
+    <div class="sb-header">Monitor</div>
+    <div class="sb-link active"><span class="emoji">📰</span> Portfolio overview</div>
+    <div class="sb-link"><span class="emoji">⊞</span> Concentration and vintages</div>
+    
+    <div class="sb-header">Early warning</div>
+    <div class="sb-link"><span class="emoji">🔔</span> Early warning monitor</div>
+    <div class="sb-link"><span class="emoji">👤</span> Borrower 360</div>
+    <div class="sb-link"><span class="emoji">✓</span> Action centre</div>
+    
+    <div class="sb-header">Forward-looking</div>
+    <div class="sb-link"><span class="emoji">📈</span> Scenarios and IFRS 9 ECL</div>
+    <div class="sb-link"><span class="emoji">👥</span> Thin-file inclusion</div>
+    
+    <div class="sb-header">Governance</div>
+    <div class="sb-link"><span class="emoji">⚙️</span> Model performance</div>
+    <div class="sb-link"><span class="emoji">📚</span> Data and methodology</div>
+    <br>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="sb-header" style="margin-top: 0;">PORTFOLIO FILTERS</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size: 13px; color: #e2e8f0; margin-bottom: 6px;">Segment</div>', unsafe_allow_html=True)
+    st.selectbox("Segment", ["All Segments", "Retail", "SME", "Corporate"], label_visibility="collapsed")
+
 
 # --- CSS INJECTION ---
 def load_local_css(file_name: str) -> None:
@@ -246,35 +314,6 @@ if not st.session_state.get('authenticated', False):
 
 
 # ==============================================================================
-# AUTHENTICATED USER SESSION BAR
-# ==============================================================================
-render_authenticated_user_bar()
-st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
-components.html('''
-<script>
-    const applyOrangeSidebar = () => {
-        const marker = window.parent.document.getElementById('dash-nav-marker');
-        if (marker) {
-            const colContent = marker.closest('div[data-testid="stVerticalBlock"]');
-            if (colContent) {
-                colContent.style.backgroundColor = '#d8982a'; // Orange
-                colContent.style.borderRadius = '12px';
-                colContent.style.padding = '15px';
-                colContent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                colContent.classList.add('custom-orange-sidebar');
-            }
-        }
-    };
-    applyOrangeSidebar();
-    setTimeout(applyOrangeSidebar, 500);
-    setTimeout(applyOrangeSidebar, 2000);
-</script>
-''', height=0, width=0)
-
-
-
-# ==============================================================================
 # TOP-LEVEL TWO-TAB NAVIGATION
 # ==============================================================================
 tab_engine, tab_sources = st.tabs([
@@ -287,6 +326,12 @@ tab_engine, tab_sources = st.tabs([
 # TAB 1: CREDIT RISK AUTOML ENGINE (OPERATIONAL WORKFLOW)
 # ##############################################################################
 with tab_engine:
+    # ==============================================================================
+    # AUTHENTICATED USER SESSION BAR
+    # ==============================================================================
+    render_authenticated_user_bar()
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    
 
     st.markdown('''
     <style>
