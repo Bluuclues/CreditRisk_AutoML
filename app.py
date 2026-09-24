@@ -1797,7 +1797,19 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
             st.info("Model drift and data quality monitoring dashboards are under development.")
         elif st.session_state.gov_section == "Terms and Conditions":
             st.markdown("## ⚖️ Terms and Conditions")
-            st.info("Terms of service, privacy policy, and usage guidelines are under development.")
+            st.markdown(
+                "**1. Early Prototype Testing** — Credit Analyze is experimental "
+                "software developed for the Kenya Bankers Association (KBA) Credit "
+                "Scoring & Alternative Data Initiative.\n\n"
+                "**2. Survey & Interview Consent** — By signing up you agree to "
+                "be available for user experience surveys, qualitative feedback "
+                "sessions, and research interviews.\n\n"
+                "**3. Immediate Access** — Open registration: valid credentials "
+                "provision access instantly.\n\n"
+                "**4. Privacy (Kenya DPA 2019)** — Credentials are hashed and "
+                "stored in an isolated data store. Portfolio records are ephemeral "
+                "and held in volatile RAM."
+            )
 
 if __name__ == "__main__":
     import sys
