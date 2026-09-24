@@ -743,15 +743,15 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
         # ==============================================================================
         # SECTION 2: MERGED FEATURE STORE SNAPSHOT EXPANDER
         # ==============================================================================
-        with st.expander("🔍 Merged Feature Store Snapshot & Data Science Exports", expanded=False):
+        with st.expander("🔍 Merged Data with Alternative Data Preview", expanded=False):
             st.dataframe(st.session_state.final_layered_df.head(5), width='stretch')
             col_exp_fs1, col_exp_fs2 = st.columns(2)
             with col_exp_fs1:
                 fs_csv = export_csv_bytes(st.session_state.final_layered_df)
                 st.download_button(
-                    label="📥 Export Feature Store (.CSV)",
+                    label="📥 Export Merged Data (.CSV)",
                     data=fs_csv,
-                    file_name="kba_feature_store_snapshot.csv",
+                    file_name="kba_merged_data_snapshot.csv",
                     mime="text/csv",
                     width='stretch'
                 )
@@ -759,9 +759,9 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
                 try:
                     fs_parquet = export_parquet_bytes(st.session_state.final_layered_df)
                     st.download_button(
-                        label="📦 Export Feature Store (.Parquet)",
+                        label="📦 Export Merged Data (.Parquet)",
                         data=fs_parquet,
-                        file_name="kba_feature_store_snapshot.parquet",
+                        file_name="kba_merged_data_snapshot.parquet",
                         mime="application/octet-stream",
                         width='stretch'
                     )
