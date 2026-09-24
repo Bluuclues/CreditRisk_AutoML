@@ -172,10 +172,6 @@ with st.sidebar:
             st.session_state.main_tab = 'Dashboard'
             st.session_state.dash_view = "Stress Testing"
             st.rerun()
-        if st.button("⚙️ Advanced (Model)", key="sb_dash_adv", type="primary" if st.session_state.main_tab == 'Dashboard' and st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
-            st.session_state.main_tab = 'Dashboard'
-            st.session_state.dash_view = "Advanced"
-            st.rerun()
 
     with st.expander("📜 Data & Governance", expanded=(st.session_state.main_tab == 'Governance')):
         if st.button("📊 Data", key="sb_gov_data", type="primary" if st.session_state.main_tab == 'Governance' and st.session_state.gov_section == "Data" else "secondary", use_container_width=True):
