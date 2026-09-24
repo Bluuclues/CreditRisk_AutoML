@@ -31,32 +31,16 @@ try:
 except ImportError:
     HAS_TABPFN = False
 
-try:
-    import xgboost as xgb
-    HAS_XGB = True
-except ImportError:
-    HAS_XGB = False
+import importlib.util
+HAS_XGB = importlib.util.find_spec('xgboost') is not None
 
-try:
-    import lightgbm as lgb
-    HAS_LGB = True
-except ImportError:
-    HAS_LGB = False
+HAS_LGB = importlib.util.find_spec('lightgbm') is not None
 
-try:
-    import catboost as cb
-    HAS_CAT = True
-except ImportError:
-    HAS_CAT = False
+HAS_CAT = importlib.util.find_spec('catboost') is not None
 
 # Try PyCaret import
 PYCARET_AVAILABLE = False
-try:
-    from pycaret.classification import ClassificationExperiment
-    from pycaret.regression import RegressionExperiment
-    PYCARET_AVAILABLE = True
-except Exception:
-    PYCARET_AVAILABLE = False
+PYCARET_AVAILABLE = importlib.util.find_spec('pycaret') is not None
 
 
 def _reconstruct_tabfm(cls):
