@@ -821,34 +821,7 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
                 champion_name = results.get("champion_name", "AutoML Champion Model")
                 engine_name = results.get("engine_name", "AutoML Engine")
 
-                col_s4_title, col_s4_info = st.columns([4, 1])
-                with col_s4_title:
-                    st.markdown("## 📈 4. Onset Default Risk Screening & Live Analytics")
-                with col_s4_info:
-                    with st.popover("ℹ️ Understanding PD & Risk Tiers"):
-                        st.markdown("""
-                        ### 📊 Credit Risk Key Performance Indicators (KPIs)
 
-                        * **Predicted Mean PD (Probability of Default):**  
-                          The portfolio-wide expected default rate over the loan tenor under current alternative data conditions.
-                        * **🔴 High Risk (PD $\\ge$ 60%):**  
-                          Immediate adverse action / credit rejection or mandatory guarantor requirement.
-                        * **🟡 Medium Risk (30% $\\le$ PD < 60%):**  
-                          Eligible for risk-adjusted dynamic credit limit scaling.
-                        * **🟢 Low Risk (PD < 30%):**  
-                          Prime informal sector borrower eligible for accelerated disbursement.
-                        """)
-
-                # --- CHAMPION MODEL ANNOUNCEMENT BANNER ---
-                st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px; padding: 16px 22px; margin-bottom: 20px; border-left: 6px solid #3b82f6; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; font-weight: 700;">🏆 Winning Champion Model Selected by AutoML</div>
-                    <div style="font-size: 22px; font-weight: 800; color: #60a5fa; margin-top: 4px;">{champion_name}</div>
-                    <div style="font-size: 13px; color: #cbd5e1; margin-top: 4px;">
-                        <b>Active Architecture:</b> {champion_name} &nbsp;|&nbsp; <b>Execution Engine:</b> {engine_name} &nbsp;|&nbsp; <b>Explainability:</b> TreeSHAP Feature Attributions
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
 
                 # --- 4.1 EXECUTIVE KPI ROW ---
                 total_records = len(df)
@@ -921,7 +894,7 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
                     # 2. NPL Time Graph
                     st.markdown("#### NPL Trend (Historical)")
                     npl_time_data = pd.DataFrame({
-                        'Month': pd.date_range(start='2026-01-01', periods=8, freq='ME').strftime('%b %Y'),
+                        'Month': pd.date_range(start='2026-01-01', periods=8, freq='M').strftime('%b %Y'),
                         'NPL Ratio (%)': [9.5, 9.8, 10.1, 10.5, 11.2, 12.0, 11.8, 11.2]
                     })
                     fig_npl = px.line(npl_time_data, x='Month', y='NPL Ratio (%)', markers=True)
