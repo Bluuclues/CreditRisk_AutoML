@@ -536,55 +536,58 @@ with tab_engine:
             </div>
             ''', unsafe_allow_html=True)
 
-    # --- DASHBOARD INTERNAL NAVIGATION ---
-        if 'dash_sidebar_expanded' not in st.session_state:
-            st.session_state.dash_sidebar_expanded = True
-        if 'dash_view' not in st.session_state:
-            st.session_state.dash_view = 'Portfolio Health'
+# --- DASHBOARD INTERNAL NAVIGATION ---
+    if 'dash_sidebar_expanded' not in st.session_state:
+        st.session_state.dash_sidebar_expanded = True
+    if 'dash_view' not in st.session_state:
+        st.session_state.dash_view = 'Portfolio Health'
 
-        if st.session_state.dash_sidebar_expanded:
-            col_dash_nav, col_dash_main = st.columns([1.2, 4.8], gap='large')
-            with col_dash_nav:
-                st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
-                if st.button("⏪ Hide Menu", key="hide_dash_menu", use_container_width=True):
-                    st.session_state.dash_sidebar_expanded = False
-                    st.rerun()
-                st.markdown("### 📊 Dashboard")
-                if st.button("📈 Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Portfolio Health"
-                    st.rerun()
-                if st.button("⚠️ Early Warning", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Early Warning System"
-                    st.rerun()
-                if st.button("💥 Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Stress Testing"
-                    st.rerun()
-                if st.button("⚙️ Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Advanced"
-                    st.rerun()
-        else:
-            col_dash_nav, col_dash_main = st.columns([0.4, 5.6], gap='small')
-            with col_dash_nav:
-                st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
-                if st.button("⏩", key="show_dash_menu", help="Expand Menu", use_container_width=True):
-                    st.session_state.dash_sidebar_expanded = True
-                    st.rerun()
-                if st.button("📈", help="Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Portfolio Health"
-                    st.rerun()
-                if st.button("⚠️", help="Early Warning System", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Early Warning System"
-                    st.rerun()
-                if st.button("💥", help="Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Stress Testing"
-                    st.rerun()
-                if st.button("⚙️", help="Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
-                    st.session_state.dash_view = "Advanced"
-                    st.rerun()
+    if st.session_state.dash_sidebar_expanded:
+        col_dash_nav, col_dash_main = st.columns([1.2, 4.8], gap='large')
+        with col_dash_nav:
+            st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
+            if st.button("⏪ Hide Menu", key="hide_dash_menu", use_container_width=True):
+                st.session_state.dash_sidebar_expanded = False
+                st.rerun()
+            st.markdown("### 📊 Dashboard")
+            if st.button("📈 Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Portfolio Health"
+                st.rerun()
+            if st.button("⚠️ Early Warning", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Early Warning System"
+                st.rerun()
+            if st.button("💥 Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Stress Testing"
+                st.rerun()
+            if st.button("⚙️ Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Advanced"
+                st.rerun()
+    else:
+        col_dash_nav, col_dash_main = st.columns([0.4, 5.6], gap='small')
+        with col_dash_nav:
+            st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
+            if st.button("⏩", key="show_dash_menu", help="Expand Menu", use_container_width=True):
+                st.session_state.dash_sidebar_expanded = True
+                st.rerun()
+            if st.button("📈", help="Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Portfolio Health"
+                st.rerun()
+            if st.button("⚠️", help="Early Warning System", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Early Warning System"
+                st.rerun()
+            if st.button("💥", help="Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Stress Testing"
+                st.rerun()
+            if st.button("⚙️", help="Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
+                st.session_state.dash_view = "Advanced"
+                st.rerun()
 
 
-        with col_dash_main:
-            if st.session_state.dash_view == 'Portfolio Health':
+    with col_dash_main:
+        if st.session_state.dash_view == 'Portfolio Health':
+            if not st.session_state.data_ingested:
+                st.info('👈 Please upload and ingest your data using the \'Data Ingestion\' panel above to view the dashboard.')
+            else:
                 # ==============================================================================
                 # LIVE DASHBOARD & ONSET DEFAULT SCREENING
                 # ==============================================================================
@@ -1431,18 +1434,18 @@ with tab_engine:
                             st.dataframe(tbl, width='stretch')
 
 
-            elif st.session_state.dash_view == 'Early Warning System':
-                st.title('Early Warning System')
-                st.info('Module under development...')
-            elif st.session_state.dash_view == 'Stress Testing':
-                st.title('Stress Testing')
-                st.info('Module under development...')
-            elif st.session_state.dash_view == 'Overall Segmentation':
-                st.title('Overall Segmentation')
-                st.info('Module under development...')
-            elif st.session_state.dash_view == 'Advanced':
-                st.title('🤖 Advanced Model Governance')
-                st.info('To view full model governance tracking and validation documentation, please switch to the **Data Governance** tab and select **Model**.')
+        elif st.session_state.dash_view == 'Early Warning System':
+            st.title('Early Warning System')
+            st.info('Module under development...')
+        elif st.session_state.dash_view == 'Stress Testing':
+            st.title('Stress Testing')
+            st.info('Module under development...')
+        elif st.session_state.dash_view == 'Overall Segmentation':
+            st.title('Overall Segmentation')
+            st.info('Module under development...')
+        elif st.session_state.dash_view == 'Advanced':
+            st.title('🤖 Advanced Model Governance')
+            st.info('To view full model governance tracking and validation documentation, please switch to the **Data Governance** tab and select **Model**.')
 
 # ##############################################################################
 # TAB 2: DATA SOURCES & METHODOLOGY REGISTRY

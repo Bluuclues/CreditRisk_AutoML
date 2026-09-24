@@ -432,3 +432,10 @@ div[data-testid='stFileUploader'] section > button {
 }
 .run-tool-bar { height: 100%; background: #4ade80; width: 0%; transition: width 0.3s; }
 .tool-loading-text { font-size: 22px; font-weight: 800; color: #94a3b8; text-align: center; margin-top: 10px; }
+
+/* Full screen layout override */
+.block-container {
+    padding-left: 0rem !important;
+    padding-right: 0rem !important;
+    max-width: 100% !important;
+}
