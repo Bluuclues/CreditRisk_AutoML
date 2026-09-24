@@ -92,7 +92,7 @@ with st.sidebar:
             color: #cbd5e1 !important;
             text-align: left !important;
             justify-content: flex-start !important;
-            font-size: 13px !important;
+            font-size: 14px !important;
             padding: 4px 10px !important;
             min-height: 36px !important;
             border-radius: 6px !important;
@@ -127,6 +127,13 @@ with st.sidebar:
             margin: 0 !important;
             justify-content: flex-start !important;
             display: flex !important;
+        }}
+        [data-testid="stSidebar"] button[kind="secondary"] p, 
+        [data-testid="stSidebar"] button[kind="secondary"] div[data-testid="stMarkdownContainer"] p {{
+            font-size: 14px !important;
+        }}
+        [data-testid="stSidebar"] button[kind="primary"] p, 
+        [data-testid="stSidebar"] button[kind="primary"] div[data-testid="stMarkdownContainer"] p {{
             font-size: 13px !important;
         }}
         /* Make buttons span full width */
@@ -1800,20 +1807,56 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
             st.markdown("## 📈 Performance Monitoring")
             st.info("Model drift and data quality monitoring dashboards are under development.")
         elif st.session_state.gov_section == "Terms and Conditions":
-            st.markdown("## ⚖️ Terms and Conditions")
             st.markdown(
-                "**1. Early Prototype Testing** — Credit Analyze is experimental "
-                "software developed for the Kenya Bankers Association (KBA) Credit "
-                "Scoring & Alternative Data Initiative.\n\n"
-                "**2. Survey & Interview Consent** — By signing up you agree to "
-                "be available for user experience surveys, qualitative feedback "
-                "sessions, and research interviews.\n\n"
-                "**3. Immediate Access** — Open registration: valid credentials "
-                "provision access instantly.\n\n"
-                "**4. Privacy (Kenya DPA 2019)** — Credentials are hashed and "
-                "stored in an isolated data store. Portfolio records are ephemeral "
-                "and held in volatile RAM."
+                '<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;">'
+                '<span>⚖️</span> TERMS AND CONDITIONS'
+                '</div>', 
+                unsafe_allow_html=True
             )
+            
+            st.markdown("""
+            <style>
+                .tc-card {
+                    background-color: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    padding: 20px 24px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+                    border-left: 5px solid #ffb703;
+                }
+                .tc-card-title {
+                    font-family: 'DM Sans', sans-serif;
+                    font-weight: 800;
+                    font-size: 16px;
+                    color: #0f172a;
+                    margin-bottom: 8px;
+                }
+                .tc-card-text {
+                    font-family: 'Century Gothic', 'Questrial', sans-serif;
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.6;
+                }
+            </style>
+            
+            <div class="tc-card">
+                <div class="tc-card-title">1. Early Prototype Testing</div>
+                <div class="tc-card-text">Credit Analyze is experimental software developed for the Kenya Bankers Association (KBA) Credit Scoring & Alternative Data Initiative.</div>
+            </div>
+            <div class="tc-card">
+                <div class="tc-card-title">2. Survey & Interview Consent</div>
+                <div class="tc-card-text">By signing up you agree to be available for user experience surveys, qualitative feedback sessions, and research interviews.</div>
+            </div>
+            <div class="tc-card">
+                <div class="tc-card-title">3. Immediate Access</div>
+                <div class="tc-card-text">Open registration: valid credentials provision access instantly.</div>
+            </div>
+            <div class="tc-card">
+                <div class="tc-card-title">4. Privacy (Kenya DPA 2019)</div>
+                <div class="tc-card-text">Credentials are hashed and stored in an isolated data store. Portfolio records are ephemeral and held in volatile RAM.</div>
+            </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     import sys
