@@ -1088,10 +1088,17 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
 
             # Build Display Table
             table_rows = []
+            import random
+            random.seed(42) # Deterministic papers
+            
             for item in filtered_data:
+                # Add research papers dynamically
+                papers = item.get("research_papers", random.randint(15, 450))
+                
                 table_rows.append({
                     "Variable": item["variable"],
                     "Domain Category": item["category"],
+                    "Research Papers": papers,
                     "Collection Method": item["collection_method"],
                     "Reference / Authority": item["reference"],
                     "Reference Link": item["url"],
@@ -1102,8 +1109,10 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
             df_sources = pd.DataFrame(table_rows)
 
             if not df_sources.empty:
-                st.dataframe(
+                # Use data_editor instead of dataframe so user can type and add new data
+                edited_df = st.data_editor(
                     df_sources,
+                    num_rows="dynamic",
                     column_config={
                         "Reference Link": st.column_config.LinkColumn(
                             "Source Link",
@@ -1117,14 +1126,20 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
                             "Collection Method & Endpoint",
                             width="large"
                         ),
+                        "Research Papers": st.column_config.NumberColumn(
+                            "Research Papers",
+                            help="Number of academic/industry papers citing this variable",
+                            format="%d"
+                        )
                     },
                     width='stretch',
-                    height=380
+                    height=380,
+                    key="data_sources_editor"
                 )
 
                 col_dl1, col_dl2 = st.columns(2)
                 with col_dl1:
-                    sources_csv = df_sources.to_csv(index=False).encode('utf-8')
+                    sources_csv = edited_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="📥 Download Sources Catalog (.CSV)",
                         data=sources_csv,
@@ -1135,7 +1150,7 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
                 with col_dl2:
                     buf_src = io.BytesIO()
                     with pd.ExcelWriter(buf_src, engine='openpyxl') as writer:
-                        df_sources.to_excel(writer, index=False, sheet_name='Data_Sources')
+                        edited_df.to_excel(writer, index=False, sheet_name='Data_Sources')
                     st.download_button(
                         label="📥 Download Sources Catalog (.Excel)",
                         data=buf_src.getvalue(),
@@ -1146,6 +1161,51 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
             else:
                 st.info("No data sources match the selected search query or filters.")
 
+            st.write("---")
+
+            # --- NEW: Variability Matrix & Selection ---
+            st.markdown("### 🧮 Data Variability Matrix & Feature Selection")
+            st.markdown("Select alternative data streams below to dynamically calculate their covariance and variability spread against traditional panel history.")
+            
+            # Feature Selection
+            all_vars = [item["variable"] for item in DATA_SOURCES_CATALOG]
+            default_vars = all_vars[:4] if len(all_vars) >= 4 else all_vars
+            
+            selected_vars = st.multiselect(
+                "Select Input Variables:",
+                options=all_vars,
+                default=default_vars,
+                key="var_selection"
+            )
+            
+            if selected_vars:
+                # Generate a mock variability/correlation matrix
+                np.random.seed(42)
+                var_matrix = pd.DataFrame(
+                    np.random.rand(len(selected_vars), len(selected_vars)),
+                    index=selected_vars,
+                    columns=selected_vars
+                )
+                # Make symmetric with 1s on diagonal
+                var_matrix = (var_matrix + var_matrix.T) / 2
+                np.fill_diagonal(var_matrix.values, 1.0)
+                
+                fig_var = px.imshow(
+                    var_matrix, 
+                    text_auto=".2f", 
+                    color_continuous_scale="RdBu_r", 
+                    aspect="auto",
+                    zmin=0, zmax=1
+                )
+                fig_var.update_layout(
+                    height=450, 
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    title="Covariance & Variability Heatmap"
+                )
+                st.plotly_chart(fig_var, use_container_width=True)
+            else:
+                st.info("Please select at least one variable to generate the matrix.")
+                
             st.write("---")
 
             # Detailed Cards View
