@@ -439,3 +439,25 @@ div[data-testid='stFileUploader'] section > button {
     padding-right: 0rem !important;
     max-width: 100% !important;
 }
+/* --- SIDEBAR STYLING --- */
+[data-testid="stSidebar"] {
+    background-color: #0f2537 !important;
+}
+[data-testid="stSidebar"] * {
+    color: #e2e8f0 !important;
+}
+/* Selectbox inside sidebar */
+[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+    background-color: #1a3650 !important;
+    border-color: #2c4a68 !important;
+    color: white !important;
+}
+[data-testid="stSidebar"] div[data-baseweb="select"] span {
+    color: white !important;
+}
+[data-testid="stSidebarNav"] {
+    display: none;
+}
+button[kind="header"] {
+    color: white !important;
+}
