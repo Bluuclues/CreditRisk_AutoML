@@ -42,6 +42,17 @@ For a deep dive into data security, privacy compliance (Kenya DPA 2019), cloud h
 
 ---
 
+## 📁 Directory Structure
+
+- **[`modules/`](./modules/)**: Python source files containing core functional logic (auth, data validation, models).
+- **[`Data/`](./Data/)**: Storage for raw and processed datasets (Alternative Data, Loan Data, Simulated Data, and WareHouse).
+- **[`Guides/`](./Guides/)**: User manuals and operational documentation (e.g., Data Upload Guidelines).
+- **[`assets/`](./assets/)**: Static assets (images, logos, styles) for the UI.
+- **[`auth_store/`](./auth_store/)**: Secure storage for role-based access control and credentials.
+- **[`scratch/`](./scratch/)**: Ephemeral directory for temporary analysis and artifacts.
+
+---
+
 ## 🚀 Quickstart
 
 ### Prerequisites
