@@ -97,11 +97,11 @@ def render_early_warning():
             st.write(f"**Segment:** {facility['Segment']}")
             
             with st.expander(f"🔴 **Risk Score:** {facility['Risk Score']}/100 (Click for Breakdown)", expanded=True):
-                st.markdown(f\"\"\"
+                st.markdown(f"""
                 * **Alternative Data Triggers (45%):** {int(facility['Risk Score'] * 0.45)}/45
                 * **Historical Repayment Behavior (35%):** {int(facility['Risk Score'] * 0.35)}/35
                 * **Macro-Economic / Sector Stress (20%):** {int(facility['Risk Score'] * 0.20)}/20
-                \"\"\")
+                """)
 
             st.write(f"**Days Past Due:** {facility['Days Past Due']} days")
             st.write(f"**Exposure:** ${facility['Total Exposure ($)']:,.2f}")
