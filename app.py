@@ -730,6 +730,35 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
             </div>
             ''', unsafe_allow_html=True)
 
+    if st.session_state.get('data_ingested', False):
+        # ==============================================================================
+        # SECTION 2: MERGED FEATURE STORE SNAPSHOT EXPANDER
+        # ==============================================================================
+        with st.expander("🔍 Merged Feature Store Snapshot & Data Science Exports", expanded=False):
+            st.dataframe(st.session_state.final_layered_df.head(5), width='stretch')
+            col_exp_fs1, col_exp_fs2 = st.columns(2)
+            with col_exp_fs1:
+                fs_csv = export_csv_bytes(st.session_state.final_layered_df)
+                st.download_button(
+                    label="📥 Export Feature Store (.CSV)",
+                    data=fs_csv,
+                    file_name="kba_feature_store_snapshot.csv",
+                    mime="text/csv",
+                    width='stretch'
+                )
+            with col_exp_fs2:
+                try:
+                    fs_parquet = export_parquet_bytes(st.session_state.final_layered_df)
+                    st.download_button(
+                        label="📦 Export Feature Store (.Parquet)",
+                        data=fs_parquet,
+                        file_name="kba_feature_store_snapshot.parquet",
+                        mime="application/octet-stream",
+                        width='stretch'
+                    )
+                except Exception:
+                    st.caption("Parquet export engine (pyarrow) optional")
+
 # --- DASHBOARD INTERNAL NAVIGATION ---
     if 'dash_view' not in st.session_state:
         st.session_state.dash_view = 'Portfolio Health'
@@ -1411,34 +1440,6 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
                         box_fig = CreditRiskEDA.generate_boxplots_by_target_fig(active_eda_df)
                         if box_fig:
                             st.plotly_chart(box_fig, width='stretch')
-
-                # ==============================================================================
-                # SECTION 2: MERGED FEATURE STORE SNAPSHOT EXPANDER
-                # ==============================================================================
-                with st.expander("🔍 Merged Feature Store Snapshot & Data Science Exports", expanded=False):
-                    st.dataframe(st.session_state.final_layered_df.head(5), width='stretch')
-                    col_exp_fs1, col_exp_fs2 = st.columns(2)
-                    with col_exp_fs1:
-                        fs_csv = export_csv_bytes(st.session_state.final_layered_df)
-                        st.download_button(
-                            label="📥 Export Feature Store (.CSV)",
-                            data=fs_csv,
-                            file_name="kba_feature_store_snapshot.csv",
-                            mime="text/csv",
-                            width='stretch'
-                        )
-                    with col_exp_fs2:
-                        try:
-                            fs_parquet = export_parquet_bytes(st.session_state.final_layered_df)
-                            st.download_button(
-                                label="📦 Export Feature Store (.Parquet)",
-                                data=fs_parquet,
-                                file_name="kba_feature_store_snapshot.parquet",
-                                mime="application/octet-stream",
-                                width='stretch'
-                            )
-                        except Exception:
-                            st.caption("Parquet export engine (pyarrow) optional")
 
 
             # ==============================================================================
