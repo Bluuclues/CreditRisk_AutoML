@@ -1369,194 +1369,216 @@ with tab_engine:
 # TAB 2: DATA SOURCES & METHODOLOGY REGISTRY
 # ##############################################################################
 with tab_sources:
-    col_reg_t, col_reg_i = st.columns([4, 1])
-    with col_reg_t:
-        st.markdown("## 📚 Alternative Data Sources & Indicator Registry")
-    with col_reg_i:
-        with st.popover("ℹ️ Econometric Transmission Channels"):
+    col_nav, col_content = st.columns([1.2, 4.8], gap="large")
+    
+    with col_nav:
+        st.markdown("### 🏛️ Governance")
+        gov_section = st.radio(
+            "Select Section:", 
+            ["Data", "Model", "Performance", "Terms and Conditions"],
+            label_visibility="collapsed"
+        )
+        
+    with col_content:
+        if gov_section == "Data":
+            col_reg_t, col_reg_i = st.columns([4, 1])
+            with col_reg_t:
+                st.markdown("## 📚 Alternative Data Sources & Indicator Registry")
+            with col_reg_i:
+                with st.popover("ℹ️ Econometric Transmission Channels"):
+                    st.markdown("""
+                    ### 📡 How Alternative Feeds Transmit into Default Risk
+
+                    * **Macro GCP & Output:** Regional GDP contractions directly reduce commercial footfall and revenue for unbanked micro-merchants.
+                    * **Food & Fuel Inflation (KAMIS & EPRA):** Volatility in food and transport expenses diminishes household disposable income, triggering default cascades.
+                    * **High-Frequency Behavioral Distress:** Spikes in Google Searches for debt renegotiation or auctioneers serve as a 30-day leading indicator of default onset.
+                    * **M-Pesa Cash Flow Velocity:** Declining 30d/90d inflow ratios signal working capital contraction before formal CRB records reflect arrears.
+                    """)
+
             st.markdown("""
-            ### 📡 How Alternative Feeds Transmit into Default Risk
-            
-            * **Macro GCP & Output:** Regional GDP contractions directly reduce commercial footfall and revenue for unbanked micro-merchants.
-            * **Food & Fuel Inflation (KAMIS & EPRA):** Volatility in food and transport expenses diminishes household disposable income, triggering default cascades.
-            * **High-Frequency Behavioral Distress:** Spikes in Google Searches for debt renegotiation or auctioneers serve as a 30-day leading indicator of default onset.
-            * **M-Pesa Cash Flow Velocity:** Declining 30d/90d inflow ratios signal working capital contraction before formal CRB records reflect arrears.
+            This registry establishes the **authoritative collection methods, reference sources, and update cadences** 
+            for all alternative data streams indexed across Kenya's 47 counties. 
+            Inspired by open data initiatives such as the [Kenya Agri Atlas](https://saficagriatlas.strathmore.edu/sources), 
+            this framework leverages zero-marginal-cost public APIs, statutory gazette trackers, and automated data scraping.
             """)
 
-    st.markdown("""
-    This registry establishes the **authoritative collection methods, reference sources, and update cadences** 
-    for all alternative data streams indexed across Kenya's 47 counties. 
-    Inspired by open data initiatives such as the [Kenya Agri Atlas](https://saficagriatlas.strathmore.edu/sources), 
-    this framework leverages zero-marginal-cost public APIs, statutory gazette trackers, and automated data scraping.
-    """)
-
-    # Top KPI summary cards
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown("""
-        <div class="kpi-card">
-            <div class="kpi-title">Monitored Indicators</div>
-            <div class="kpi-value">9 Streams</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with k2:
-        st.markdown("""
-        <div class="kpi-card">
-            <div class="kpi-title">Geographic Scope</div>
-            <div class="kpi-value">47 Counties</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with k3:
-        st.markdown("""
-        <div class="kpi-card">
-            <div class="kpi-title">API Marginal Cost</div>
-            <div class="kpi-value" style="color: #16a34a;">0.00 KES (Free/Open)</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with k4:
-        st.markdown("""
-        <div class="kpi-card">
-            <div class="kpi-title">Ingestion Status</div>
-            <div class="kpi-value" style="color: #c2410c;">Pending Live Feeds</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.write("")
-    st.subheader("📋 Alternative Data Indicator Catalog")
-
-    # Filters
-    col_search, col_cat, col_stat = st.columns([2, 1, 1])
-    with col_search:
-        search_term = st.text_input("🔍 Search Variable, Source, or Method:", placeholder="e.g. GDP, Food, EPRA, M-Pesa, OSM, Poverty...", help="Filter data variables by name, endpoint, authority, or risk rationale.")
-    with col_cat:
-        all_categories = ["All Domains"] + sorted(list(set(d["category"] for d in DATA_SOURCES_CATALOG)))
-        selected_category = st.selectbox("Filter Domain:", all_categories, help="Filter indicators by categorical domain.")
-    with col_stat:
-        all_statuses = ["All Statuses"] + sorted(list(set(d["status"] for d in DATA_SOURCES_CATALOG)))
-        selected_status = st.selectbox("Filter Status:", all_statuses, help="Filter indicators by live ingestion readiness status.")
-
-    # Filter records
-    filtered_data = []
-    for item in DATA_SOURCES_CATALOG:
-        if selected_category != "All Domains" and item["category"] != selected_category:
-            continue
-        if selected_status != "All Statuses" and item["status"] != selected_status:
-            continue
-        if search_term:
-            q = search_term.lower()
-            match = (
-                q in item["variable"].lower()
-                or q in item["collection_method"].lower()
-                or q in item["reference"].lower()
-                or q in item["category"].lower()
-                or q in item["actuarial_rationale"].lower()
-            )
-            if not match:
-                continue
-        filtered_data.append(item)
-
-    # Build Display Table
-    table_rows = []
-    for item in filtered_data:
-        table_rows.append({
-            "Variable": item["variable"],
-            "Domain Category": item["category"],
-            "Collection Method": item["collection_method"],
-            "Reference / Authority": item["reference"],
-            "Reference Link": item["url"],
-            "Update Cadence": item["last_updated"],
-            "Status": f"🟡 {item['status']}" if item['status'] == "Pending" else f"🟢 {item['status']}"
-        })
-
-    df_sources = pd.DataFrame(table_rows)
-
-    if not df_sources.empty:
-        st.dataframe(
-            df_sources,
-            column_config={
-                "Reference Link": st.column_config.LinkColumn(
-                    "Source Link",
-                    display_text="Open Portal ↗"
-                ),
-                "Variable": st.column_config.TextColumn(
-                    "Variable Name",
-                    width="medium"
-                ),
-                "Collection Method": st.column_config.TextColumn(
-                    "Collection Method & Endpoint",
-                    width="large"
-                ),
-            },
-            width='stretch',
-            height=380
-        )
-
-        col_dl1, col_dl2 = st.columns(2)
-        with col_dl1:
-            sources_csv = df_sources.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download Sources Catalog (.CSV)",
-                data=sources_csv,
-                file_name="kba_alternative_data_sources.csv",
-                mime="text/csv",
-                width='stretch'
-            )
-        with col_dl2:
-            buf_src = io.BytesIO()
-            with pd.ExcelWriter(buf_src, engine='openpyxl') as writer:
-                df_sources.to_excel(writer, index=False, sheet_name='Data_Sources')
-            st.download_button(
-                label="📥 Download Sources Catalog (.Excel)",
-                data=buf_src.getvalue(),
-                file_name="kba_alternative_data_sources.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width='stretch'
-            )
-    else:
-        st.info("No data sources match the selected search query or filters.")
-
-    st.write("---")
-
-    # Detailed Cards View
-    with st.expander("🔍 Detailed Variable Specifications & Actuarial Risk Rationales", expanded=False):
-        for item in filtered_data:
-            badge_cls = "badge-pending" if item["status"] == "Pending" else "badge-active"
-            st.markdown(f"""
-            <div class="source-card">
-                <div class="source-card-title">
-                    <span>{item['variable']}</span>
-                    <div>
-                        <span class="source-category-tag">{item['category']}</span>
-                        <span class="{badge_cls}">● {item['status']}</span>
-                    </div>
+            # Top KPI summary cards
+            k1, k2, k3, k4 = st.columns(4)
+            with k1:
+                st.markdown("""
+                <div class="kpi-card">
+                    <div class="kpi-title">Monitored Indicators</div>
+                    <div class="kpi-value">9 Streams</div>
                 </div>
-                <div class="source-meta-row">
-                    <b>Collection Method:</b> {item['collection_method']} &nbsp;|&nbsp; <b>Update Cadence:</b> {item['last_updated']}
+                """, unsafe_allow_html=True)
+            with k2:
+                st.markdown("""
+                <div class="kpi-card">
+                    <div class="kpi-title">Geographic Scope</div>
+                    <div class="kpi-value">47 Counties</div>
                 </div>
-                <div class="source-meta-row">
-                    <b>Data Authority & Reference:</b> <a href="{item['url']}" target="_blank">{item['reference']}</a>
+                """, unsafe_allow_html=True)
+            with k3:
+                st.markdown("""
+                <div class="kpi-card">
+                    <div class="kpi-title">API Marginal Cost</div>
+                    <div class="kpi-value" style="color: #16a34a;">0.00 KES (Free/Open)</div>
                 </div>
-                <div class="source-desc">
-                    <b>Actuarial & Credit Risk Rationale:</b> {item['actuarial_rationale']}
+                """, unsafe_allow_html=True)
+            with k4:
+                st.markdown("""
+                <div class="kpi-card">
+                    <div class="kpi-title">Ingestion Status</div>
+                    <div class="kpi-value" style="color: #c2410c;">Pending Live Feeds</div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-    st.write("---")
+            st.write("")
+            st.subheader("📋 Alternative Data Indicator Catalog")
 
-    # Interactive Methodology Viewer
-    with st.expander("📖 View Master Methodology & Architectural Guide (Full Document)", expanded=False):
-        try:
-            methodology_path = os.path.join(BASE_DIR, "METHODOLOGY.md")
-            if os.path.exists(methodology_path):
-                with open(methodology_path, "r", encoding="utf-8") as f:
-                    meth_content = f.read()
-                st.markdown(meth_content)
+            # Filters
+            col_search, col_cat, col_stat = st.columns([2, 1, 1])
+            with col_search:
+                search_term = st.text_input("🔍 Search Variable, Source, or Method:", placeholder="e.g. GDP, Food, EPRA, M-Pesa, OSM, Poverty...", help="Filter data variables by name, endpoint, authority, or risk rationale.")
+            with col_cat:
+                all_categories = ["All Domains"] + sorted(list(set(d["category"] for d in DATA_SOURCES_CATALOG)))
+                selected_category = st.selectbox("Filter Domain:", all_categories, help="Filter indicators by categorical domain.")
+            with col_stat:
+                all_statuses = ["All Statuses"] + sorted(list(set(d["status"] for d in DATA_SOURCES_CATALOG)))
+                selected_status = st.selectbox("Filter Status:", all_statuses, help="Filter indicators by live ingestion readiness status.")
+
+            # Filter records
+            filtered_data = []
+            for item in DATA_SOURCES_CATALOG:
+                if selected_category != "All Domains" and item["category"] != selected_category:
+                    continue
+                if selected_status != "All Statuses" and item["status"] != selected_status:
+                    continue
+                if search_term:
+                    q = search_term.lower()
+                    match = (
+                        q in item["variable"].lower()
+                        or q in item["collection_method"].lower()
+                        or q in item["reference"].lower()
+                        or q in item["category"].lower()
+                        or q in item["actuarial_rationale"].lower()
+                    )
+                    if not match:
+                        continue
+                filtered_data.append(item)
+
+            # Build Display Table
+            table_rows = []
+            for item in filtered_data:
+                table_rows.append({
+                    "Variable": item["variable"],
+                    "Domain Category": item["category"],
+                    "Collection Method": item["collection_method"],
+                    "Reference / Authority": item["reference"],
+                    "Reference Link": item["url"],
+                    "Update Cadence": item["last_updated"],
+                    "Status": f"🟡 {item['status']}" if item['status'] == "Pending" else f"🟢 {item['status']}"
+                })
+
+            df_sources = pd.DataFrame(table_rows)
+
+            if not df_sources.empty:
+                st.dataframe(
+                    df_sources,
+                    column_config={
+                        "Reference Link": st.column_config.LinkColumn(
+                            "Source Link",
+                            display_text="Open Portal ↗"
+                        ),
+                        "Variable": st.column_config.TextColumn(
+                            "Variable Name",
+                            width="medium"
+                        ),
+                        "Collection Method": st.column_config.TextColumn(
+                            "Collection Method & Endpoint",
+                            width="large"
+                        ),
+                    },
+                    width='stretch',
+                    height=380
+                )
+
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    sources_csv = df_sources.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 Download Sources Catalog (.CSV)",
+                        data=sources_csv,
+                        file_name="kba_alternative_data_sources.csv",
+                        mime="text/csv",
+                        width='stretch'
+                    )
+                with col_dl2:
+                    buf_src = io.BytesIO()
+                    with pd.ExcelWriter(buf_src, engine='openpyxl') as writer:
+                        df_sources.to_excel(writer, index=False, sheet_name='Data_Sources')
+                    st.download_button(
+                        label="📥 Download Sources Catalog (.Excel)",
+                        data=buf_src.getvalue(),
+                        file_name="kba_alternative_data_sources.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        width='stretch'
+                    )
             else:
-                st.info("Methodology file not found at METHODOLOGY.md")
-        except Exception as e:
-            st.warning(f"Unable to load METHODOLOGY.md: {str(e)}")
+                st.info("No data sources match the selected search query or filters.")
 
+            st.write("---")
+
+            # Detailed Cards View
+            with st.expander("🔍 Detailed Variable Specifications & Actuarial Risk Rationales", expanded=False):
+                for item in filtered_data:
+                    badge_cls = "badge-pending" if item["status"] == "Pending" else "badge-active"
+                    st.markdown(f"""
+                    <div class="source-card">
+                        <div class="source-card-title">
+                            <span>{item['variable']}</span>
+                            <div>
+                                <span class="source-category-tag">{item['category']}</span>
+                                <span class="{badge_cls}">● {item['status']}</span>
+                            </div>
+                        </div>
+                        <div class="source-meta-row">
+                            <b>Collection Method:</b> {item['collection_method']} &nbsp;|&nbsp; <b>Update Cadence:</b> {item['last_updated']}
+                        </div>
+                        <div class="source-meta-row">
+                            <b>Data Authority & Reference:</b> <a href="{item['url']}" target="_blank">{item['reference']}</a>
+                        </div>
+                        <div class="source-desc">
+                            <b>Actuarial & Credit Risk Rationale:</b> {item['actuarial_rationale']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.write("---")
+
+            # Interactive Methodology Viewer
+            with st.expander("📖 View Master Methodology & Architectural Guide (Full Document)", expanded=False):
+                try:
+                    methodology_path = os.path.join(BASE_DIR, "METHODOLOGY.md")
+                    if os.path.exists(methodology_path):
+                        with open(methodology_path, "r", encoding="utf-8") as f:
+                            meth_content = f.read()
+                        st.markdown(meth_content)
+                    else:
+                        st.info("Methodology file not found at METHODOLOGY.md")
+                except Exception as e:
+                    st.warning(f"Unable to load METHODOLOGY.md: {str(e)}")
+
+
+        elif gov_section == "Model":
+            st.markdown("## 🤖 Model Governance")
+            st.info("Model governance tracking and validation documentation is under development.")
+        elif gov_section == "Performance":
+            st.markdown("## 📈 Performance Monitoring")
+            st.info("Model drift and data quality monitoring dashboards are under development.")
+        elif gov_section == "Terms and Conditions":
+            st.markdown("## ⚖️ Terms and Conditions")
+            st.info("Terms of service, privacy policy, and usage guidelines are under development.")
 
 if __name__ == "__main__":
     import sys
