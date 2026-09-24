@@ -13,7 +13,7 @@ All profile fields combined into other_details for DB storage.
 import os
 import base64
 import streamlit as st
-from modules.auth import register_user, authenticate_user, init_auth_db
+from modules.auth import register_user, authenticate_user, init_auth_db, update_user_email, delete_user_account
 
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR   = os.path.dirname(MODULE_DIR)
@@ -535,6 +535,36 @@ def render_login_signup_page() -> None:
     st.markdown("</div>", unsafe_allow_html=True)
 
 
+@st.dialog("Manage Profile")
+def manage_profile_dialog():
+    user = st.session_state.current_user
+    
+    st.markdown("### Update Details")
+    new_email = st.text_input("Email Address", value=user.get("email", ""))
+    
+    if st.button("Save Changes", type="primary"):
+        success, msg = update_user_email(user["id"], new_email)
+        if success:
+            st.session_state.current_user["email"] = new_email
+            st.success("Email updated successfully!")
+            st.rerun()
+        else:
+            st.error(msg)
+            
+    st.divider()
+    
+    st.markdown("### Danger Zone")
+    st.warning("Opting out will permanently delete your account and revoke access to the prototype.")
+    
+    if st.button("Opt Out & Delete Account", type="primary"):
+        success, msg = delete_user_account(user["id"])
+        if success:
+            st.session_state.authenticated = False
+            st.session_state.current_user = None
+            st.rerun()
+        else:
+            st.error(f"Failed to delete account: {msg}")
+
 def render_authenticated_user_bar() -> None:
     """Sleek top navigation header shown when a user is logged in."""
     user    = st.session_state.get("current_user", {})
@@ -558,7 +588,6 @@ def render_authenticated_user_bar() -> None:
             </a>
         </div>
         <div class="mth-right">
-            <span class="mth-manage-profile">Manage Profile <span style="font-size: 16px; color:#a1a1aa; margin-left: 2px;">⚙️</span></span>
             <div class="mth-user-session">
                 <span style="font-size: 16px;">👤</span>
                 <span class="mth-email">{email}</span>
@@ -570,12 +599,15 @@ def render_authenticated_user_bar() -> None:
     </div>
     """
 
-    # We use columns to put the sign out button right next to the HTML header
-    col_html, col_btn = st.columns([5.5, 1])
+    col_html, col_manage, col_btn = st.columns([5.5, 1, 1])
     with col_html:
         st.markdown(header_html, unsafe_allow_html=True)
+    with col_manage:
+        st.markdown("<div class='mth-manage-profile-wrapper'>", unsafe_allow_html=True)
+        if st.button("⚙️ Manage Profile", key="manage_profile_btn", use_container_width=True):
+            manage_profile_dialog()
+        st.markdown("</div>", unsafe_allow_html=True)
     with col_btn:
-        # Give it a class for custom styling in style.css
         st.markdown("<div class='sign-out-wrapper'>", unsafe_allow_html=True)
         if st.button("SIGN OUT", key="sign_out_btn", use_container_width=True):
             st.session_state.authenticated = False

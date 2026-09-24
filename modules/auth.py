@@ -268,3 +268,50 @@ def get_all_users() -> List[Dict[str, Any]]:
             "last_login": str(row.get("last_login", ""))
         })
     return users_list
+
+
+def update_user_email(user_id: int, new_email: str) -> Tuple[bool, str]:
+    """Updates the user's email in the Google Sheets database."""
+    init_auth_db()
+    clean_email = new_email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        return False, "Please provide a valid email address."
+        
+    conn = _get_gsheets_connection()
+    df = conn.read(ttl=0)
+    
+    if df.empty or 'email' not in df.columns:
+        return False, "Database error."
+        
+    # Check if new email is already taken by another user
+    existing_users = df[df['email'].astype(str).str.lower() == clean_email]
+    if not existing_users.empty and existing_users.iloc[0]['id'] != user_id:
+        return False, f"An account with email '{clean_email}' already exists."
+
+    # Update email for the given user_id
+    mask = df['id'] == user_id
+    if not mask.any():
+        return False, "User not found."
+        
+    df.loc[mask, 'email'] = clean_email
+    conn.update(data=df)
+    return True, "Email updated successfully."
+
+
+def delete_user_account(user_id: int) -> Tuple[bool, str]:
+    """Opts the user out of the prototype by deleting their account from Google Sheets."""
+    init_auth_db()
+    conn = _get_gsheets_connection()
+    df = conn.read(ttl=0)
+    
+    if df.empty or 'id' not in df.columns:
+        return False, "Database error."
+        
+    mask = df['id'] == user_id
+    if not mask.any():
+        return False, "User not found."
+        
+    # Remove the user's row
+    df = df[~mask]
+    conn.update(data=df)
+    return True, "Account deleted successfully."
