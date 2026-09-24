@@ -32,15 +32,18 @@ except ImportError:
     HAS_TABPFN = False
 
 import importlib.util
-HAS_XGB = importlib.util.find_spec('xgboost') is not None
 
-HAS_LGB = importlib.util.find_spec('lightgbm') is not None
+def _safe_find_spec(module_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except Exception:
+        return False
 
-HAS_CAT = importlib.util.find_spec('catboost') is not None
+HAS_XGB = _safe_find_spec('xgboost')
+HAS_LGB = _safe_find_spec('lightgbm')
+HAS_CAT = _safe_find_spec('catboost')
 
-# Try PyCaret import
-PYCARET_AVAILABLE = False
-PYCARET_AVAILABLE = importlib.util.find_spec('pycaret') is not None
+PYCARET_AVAILABLE = _safe_find_spec('pycaret')
 
 
 def _reconstruct_tabfm(cls):
