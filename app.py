@@ -27,48 +27,53 @@ from modules.iv_engine import calculate_portfolio_iv, plot_iv_chart, plot_iv_qua
 from modules.models.dispatcher import run_automl_pipeline
 from modules.models.shap_explainer import CreditRiskExplainer
 from modules.eda_visualizer import CreditRiskEDA
-from modules.login_page import render_login_signup_page, manage_profile_dialog
+from modules.login_page import render_login_signup_page, manage_profile_dialog, _b64, LOGO_PATH
 
 # Streamlit Page Config - Wide Layout
 st.set_page_config(
-    page_title="KBA Credit Risk AutoML Engine",
+    page_title="Credit Analyze - AutoML Engine",
     page_icon="🏦",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 with st.sidebar:
-    st.markdown("""
+    logo_b64 = _b64(LOGO_PATH)
+    logo_html = f"<img src='{logo_b64}' alt='Logo' style='height: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'/>" if logo_b64 else "<span style='font-size: 28px;'>🏦</span>"
+
+    st.markdown(f"""
     <style>
         /* --- SIDEBAR STYLING --- */
-        [data-testid="stSidebar"] {
+        [data-testid="stSidebar"] {{
             background-color: #0f2537 !important;
-        }
-        [data-testid="stSidebar"] * {
+        }}
+        [data-testid="stSidebar"] * {{
             color: #e2e8f0 !important;
-        }
+        }}
         /* Selectbox inside sidebar */
-        [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        [data-testid="stSidebar"] div[data-baseweb="select"] > div {{
             background-color: #1a3650 !important;
             border-color: #2c4a68 !important;
             color: white !important;
-        }
-        [data-testid="stSidebar"] div[data-baseweb="select"] span {
+        }}
+        [data-testid="stSidebar"] div[data-baseweb="select"] span {{
             color: white !important;
-        }
-        [data-testid="stSidebarNav"] {
+        }}
+        [data-testid="stSidebarNav"] {{
             display: none;
-        }
-        button[kind="header"] {
+        }}
+        button[kind="header"] {{
             color: white !important;
-        }
+        }}
     </style>
     
     <div style="display: flex; align-items: center; margin-bottom: 30px;">
-        <span style="font-size: 28px; margin-right: 12px;">🎯</span>
+        <div style="margin-right: 12px; display: flex; align-items: center;">
+            {logo_html}
+        </div>
         <div>
-            <div style="font-weight: 800; font-size: 16px; color: white; line-height: 1.2;">Portfolio Risk Radar</div>
-            <div style="font-size: 11px; color: #94a3b8;">Early warning and risk intelligence</div>
+            <div style="font-weight: 800; font-size: 18px; color: white; line-height: 1.2;">Credit Analyze</div>
+            <div style="font-size: 11px; color: #94a3b8;">Risk & Analytics Engine</div>
         </div>
     </div>
     
