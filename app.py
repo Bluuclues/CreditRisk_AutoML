@@ -1588,16 +1588,16 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
 
 
         elif st.session_state.dash_view == 'Early Warning System':
-            st.title('Early Warning System')
+            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>🚨</span> EARLY WARNING SYSTEM</div>', unsafe_allow_html=True)
             st.info('Module under development...')
         elif st.session_state.dash_view == 'Stress Testing':
-            st.title('Stress Testing')
+            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>📉</span> STRESS TESTING</div>', unsafe_allow_html=True)
             st.info('Module under development...')
         elif st.session_state.dash_view == 'Overall Segmentation':
-            st.title('Overall Segmentation')
+            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>👥</span> OVERALL SEGMENTATION</div>', unsafe_allow_html=True)
             st.info('Module under development...')
         elif st.session_state.dash_view == 'Advanced':
-            st.title('🤖 Advanced Model Governance')
+            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>🤖</span> ADVANCED MODEL GOVERNANCE</div>', unsafe_allow_html=True)
             st.info('To view full model governance tracking and validation documentation, please switch to the **Data Governance** tab and select **Model**.')
 
 # ##############################################################################
@@ -1613,7 +1613,7 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
         if st.session_state.gov_section == "Data":
             col_reg_t, col_reg_i = st.columns([4, 1])
             with col_reg_t:
-                st.markdown("## 📚 Alternative Data Sources & Indicator Registry")
+                st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>📚</span> ALTERNATIVE DATA SOURCES</div>', unsafe_allow_html=True)
             with col_reg_i:
                 with st.popover("ℹ️ Econometric Transmission Channels"):
                     st.markdown("""
@@ -1801,10 +1801,10 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
 
 
         elif st.session_state.gov_section == "Model":
-            st.markdown("## 🤖 Model Governance")
+            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>🤖</span> MODEL GOVERNANCE</div>', unsafe_allow_html=True)
             st.info("Model governance tracking and validation documentation is under development.")
         elif st.session_state.gov_section == "Performance":
-            st.markdown("## 📈 Performance Monitoring")
+            st.markdown('<div style="font-family: \'DM Sans\', sans-serif; font-size: 56px; font-weight: 900; color: #ffb703; text-transform: uppercase; margin-bottom: 40px; letter-spacing: -1px; display: flex; align-items: center; gap: 15px;"><span>📈</span> PERFORMANCE MONITORING</div>', unsafe_allow_html=True)
             st.info("Model drift and data quality monitoring dashboards are under development.")
         elif st.session_state.gov_section == "Terms and Conditions":
             st.markdown(
