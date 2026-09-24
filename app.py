@@ -39,7 +39,7 @@ st.set_page_config(
 
 with st.sidebar:
     logo_b64 = _b64(LOGO_PATH)
-    logo_html = f"<img src='{logo_b64}' alt='Logo' style='height: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'/>" if logo_b64 else "<span style='font-size: 28px;'>🏦</span>"
+    logo_html = f"<img src='{logo_b64}' alt='Logo' style='height: 64px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);'/>" if logo_b64 else "<span style='font-size: 42px;'>🏦</span>"
 
     st.markdown(f"""
     <style>
@@ -67,13 +67,13 @@ with st.sidebar:
         }}
     </style>
     
-    <div style="display: flex; align-items: center; margin-bottom: 30px;">
-        <div style="margin-right: 12px; display: flex; align-items: center;">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 30px; text-align: center;">
+        <div style="margin-bottom: 12px;">
             {logo_html}
         </div>
         <div>
-            <div style="font-weight: 800; font-size: 18px; color: white; line-height: 1.2;">Credit Analyze</div>
-            <div style="font-size: 11px; color: #94a3b8;">Risk & Analytics Engine</div>
+            <div style="font-weight: 800; font-size: 20px; color: white; line-height: 1.2;">Credit Analyze</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Risk & Analytics Engine</div>
         </div>
     </div>
     
