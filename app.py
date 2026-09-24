@@ -32,7 +32,7 @@ from modules.login_page import render_login_signup_page, manage_profile_dialog, 
 # Streamlit Page Config - Wide Layout
 st.set_page_config(
     page_title="Credit Analyze - AutoML Engine",
-    page_icon="🏦",
+    page_icon=LOGO_PATH,
     layout="wide",
     initial_sidebar_state="expanded"
 )
