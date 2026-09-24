@@ -1369,18 +1369,54 @@ with tab_engine:
 # TAB 2: DATA SOURCES & METHODOLOGY REGISTRY
 # ##############################################################################
 with tab_sources:
-    col_nav, col_content = st.columns([1.2, 4.8], gap="large")
-    
-    with col_nav:
-        st.markdown("### 🏛️ Governance")
-        gov_section = st.radio(
-            "Select Section:", 
-            ["Data", "Model", "Performance", "Terms and Conditions"],
-            label_visibility="collapsed"
-        )
-        
+    if 'gov_sidebar_expanded' not in st.session_state:
+        st.session_state.gov_sidebar_expanded = True
+    if 'gov_section' not in st.session_state:
+        st.session_state.gov_section = 'Data'
+
+    if st.session_state.gov_sidebar_expanded:
+        col_nav, col_content = st.columns([1.2, 4.8], gap="large")
+        with col_nav:
+            if st.button("⏪ Hide Menu", key="hide_gov_menu", use_container_width=True):
+                st.session_state.gov_sidebar_expanded = False
+                st.rerun()
+                
+            st.markdown("### 🏛️ Governance")
+            
+            if st.button("📊 Data", type="primary" if st.session_state.gov_section == "Data" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Data"
+                st.rerun()
+            if st.button("🤖 Model", type="primary" if st.session_state.gov_section == "Model" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Model"
+                st.rerun()
+            if st.button("📈 Performance", type="primary" if st.session_state.gov_section == "Performance" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Performance"
+                st.rerun()
+            if st.button("⚖️ Terms & Conditions", type="primary" if st.session_state.gov_section == "Terms and Conditions" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Terms and Conditions"
+                st.rerun()
+    else:
+        col_nav, col_content = st.columns([0.4, 5.6], gap="small")
+        with col_nav:
+            if st.button("⏩", key="show_gov_menu", help="Expand Menu", use_container_width=True):
+                st.session_state.gov_sidebar_expanded = True
+                st.rerun()
+                
+            if st.button("📊", help="Data", type="primary" if st.session_state.gov_section == "Data" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Data"
+                st.rerun()
+            if st.button("🤖", help="Model", type="primary" if st.session_state.gov_section == "Model" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Model"
+                st.rerun()
+            if st.button("📈", help="Performance", type="primary" if st.session_state.gov_section == "Performance" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Performance"
+                st.rerun()
+            if st.button("⚖️", help="Terms & Conditions", type="primary" if st.session_state.gov_section == "Terms and Conditions" else "secondary", use_container_width=True):
+                st.session_state.gov_section = "Terms and Conditions"
+                st.rerun()
+
     with col_content:
-        if gov_section == "Data":
+        if st.session_state.gov_section == "Data":
             col_reg_t, col_reg_i = st.columns([4, 1])
             with col_reg_t:
                 st.markdown("## 📚 Alternative Data Sources & Indicator Registry")
@@ -1570,13 +1606,13 @@ with tab_sources:
                     st.warning(f"Unable to load METHODOLOGY.md: {str(e)}")
 
 
-        elif gov_section == "Model":
+        elif st.session_state.gov_section == "Model":
             st.markdown("## 🤖 Model Governance")
             st.info("Model governance tracking and validation documentation is under development.")
-        elif gov_section == "Performance":
+        elif st.session_state.gov_section == "Performance":
             st.markdown("## 📈 Performance Monitoring")
             st.info("Model drift and data quality monitoring dashboards are under development.")
-        elif gov_section == "Terms and Conditions":
+        elif st.session_state.gov_section == "Terms and Conditions":
             st.markdown("## ⚖️ Terms and Conditions")
             st.info("Terms of service, privacy policy, and usage guidelines are under development.")
 
