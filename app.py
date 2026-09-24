@@ -1021,38 +1021,7 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
             this framework leverages zero-marginal-cost public APIs, statutory gazette trackers, and automated data scraping.
             """)
 
-            # Top KPI summary cards
-            k1, k2, k3, k4 = st.columns(4)
-            with k1:
-                st.markdown("""
-                <div class="kpi-card">
-                    <div class="kpi-title">Monitored Indicators</div>
-                    <div class="kpi-value">9 Streams</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with k2:
-                st.markdown("""
-                <div class="kpi-card">
-                    <div class="kpi-title">Geographic Scope</div>
-                    <div class="kpi-value">47 Counties</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with k3:
-                st.markdown("""
-                <div class="kpi-card">
-                    <div class="kpi-title">API Marginal Cost</div>
-                    <div class="kpi-value" style="color: #16a34a;">0.00 KES (Free/Open)</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with k4:
-                st.markdown("""
-                <div class="kpi-card">
-                    <div class="kpi-title">Ingestion Status</div>
-                    <div class="kpi-value" style="color: #c2410c;">Pending Live Feeds</div>
-                </div>
-                """, unsafe_allow_html=True)
 
-            st.write("---")
             
             with st.expander("📥 1. Import Custom Alternative Data (Data Selector)", expanded=True):
                 st.markdown("Upload your own custom alternative datasets (CSV or Excel) to merge them into the global feature store catalog for the AutoML pipeline.")
@@ -1279,32 +1248,7 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
                 else:
                     st.info("Please select at least one variable to generate the matrix.")
 
-            # Detailed Cards View
-            with st.expander("🔍 Detailed Variable Specifications & Actuarial Risk Rationales", expanded=False):
-                for item in filtered_data:
-                    badge_cls = "badge-pending" if item["status"] == "Pending" else "badge-active"
-                    st.markdown(f"""
-                    <div class="source-card">
-                        <div class="source-card-title">
-                            <span>{item['variable']}</span>
-                            <div>
-                                <span class="source-category-tag">{item['category']}</span>
-                                <span class="{badge_cls}">● {item['status']}</span>
-                            </div>
-                        </div>
-                        <div class="source-meta-row">
-                            <b>Collection Method:</b> {item['collection_method']} &nbsp;|&nbsp; <b>Update Cadence:</b> {item['last_updated']}
-                        </div>
-                        <div class="source-meta-row">
-                            <b>Data Authority & Reference:</b> <a href="{item['url']}" target="_blank">{item['reference']}</a>
-                        </div>
-                        <div class="source-desc">
-                            <b>Actuarial & Credit Risk Rationale:</b> {item['actuarial_rationale']}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
 
-            st.write("---")
 
             # Interactive Methodology Viewer
             with st.expander("📖 View Master Methodology & Architectural Guide (Full Document)", expanded=False):
