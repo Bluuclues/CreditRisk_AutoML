@@ -873,76 +873,6 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
 
                 st.write("")
                 
-                # --- NEW: ADVANCED PORTFOLIO VISUALIZATIONS (DASHBOARD UPGRADE) ---
-                st.markdown("### 📊 Portfolio Concentration & Trends")
-                
-                tab_npl, tab_heat, tab_vintage = st.tabs(["Time Trends & Status", "Risk Heatmap by Sector", "Vintages"])
-                
-                with tab_npl:
-                    # 1. Risk Status of the Book (Horizontal Bar)
-                    st.markdown("#### Risk status of the book")
-                    risk_status_data = pd.DataFrame({
-                        'Category': ['Risk Status'],
-                        'Green': [59], 'Amber': [13], 'Orange': [9], 'Red': [8], 'NPL': [11]
-                    })
-                    fig_status = px.bar(risk_status_data, x=['Green', 'Amber', 'Orange', 'Red', 'NPL'], y='Category', orientation='h',
-                                        color_discrete_sequence=['#22c55e', '#eab308', '#f97316', '#ef4444', '#475569'],
-                                        text_auto=True)
-                    fig_status.update_layout(barmode='stack', showlegend=True, height=150, xaxis_title="Percentage (%)", yaxis_visible=False, margin=dict(l=0, r=0, t=0, b=0))
-                    st.plotly_chart(fig_status, use_container_width=True)
-                    
-                    # 2. NPL Time Graph
-                    st.markdown("#### NPL Trend (Historical)")
-                    npl_time_data = pd.DataFrame({
-                        'Month': pd.date_range(start='2026-01-01', periods=8, freq='M').strftime('%b %Y'),
-                        'NPL Ratio (%)': [9.5, 9.8, 10.1, 10.5, 11.2, 12.0, 11.8, 11.2]
-                    })
-                    fig_npl = px.line(npl_time_data, x='Month', y='NPL Ratio (%)', markers=True)
-                    fig_npl.update_traces(line_color='#ef4444', marker=dict(size=8))
-                    fig_npl.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
-                    st.plotly_chart(fig_npl, use_container_width=True)
-
-                with tab_heat:
-                    st.markdown("#### Risk heatmap by sector")
-                    st.markdown("Darker cells are worse. Read across a row to see whether a concentration is also deteriorating.")
-                    
-                    # 3. Heatmap by Sector
-                    heatmap_data = pd.DataFrame({
-                        'Sector': ['Trade', 'Personal & household', 'Real estate', 'Manufacturing', 'Building & construction'],
-                        'Exposure': ['KES 1.9bn', 'KES 1.8bn', 'KES 1.1bn', 'KES 1.0bn', 'KES 823.7M'],
-                        'Share (%)': [22.0, 20.1, 13.0, 11.4, 9.4],
-                        'Facilities': [320, 815, 125, 72, 62],
-                        'NPL ratio (%)': [15.8, 5.2, 6.3, 18.0, 14.9],
-                        'NPL change 6m (pp)': [-1.4, 1.8, 0.1, 5.8, -2.5],
-                        '30 to 89 DPD (%)': [2.7, 3.0, 3.6, 6.0, 9.3],
-                        'Stage 2 (%)': [26.0, 7.5, 28.6, 10.7, 18.6]
-                    })
-                    
-                    def heatmap_style(val):
-                        if isinstance(val, (int, float)):
-                            color = '#ef4444' if val >= 15 else '#f97316' if val >= 10 else '#eab308' if val >= 5 else '#22c55e' if val >= 0 else '#86efac'
-                            return f'background-color: {color}; color: white; font-weight: bold;'
-                        return ''
-                    
-                    st.dataframe(
-                        heatmap_data.style.map(heatmap_style, subset=['NPL ratio (%)', 'NPL change 6m (pp)', '30 to 89 DPD (%)', 'Stage 2 (%)']), 
-                        use_container_width=True, 
-                        hide_index=True
-                    )
-
-                with tab_vintage:
-                    st.markdown("#### Vintages of DPD")
-                    vintage_data = pd.DataFrame({
-                        'Origination Quarter': ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026'],
-                        '30 DPD (%)': [2.1, 2.5, 3.0, 1.8, 1.2],
-                        '60 DPD (%)': [1.5, 1.8, 2.2, 1.0, 0.5],
-                        '90+ DPD (%)': [4.2, 3.8, 4.5, 2.1, 0.8]
-                    })
-                    fig_vin = px.bar(vintage_data, x='Origination Quarter', y=['30 DPD (%)', '60 DPD (%)', '90+ DPD (%)'], barmode='group')
-                    fig_vin.update_layout(height=350, legend_title="DPD Bucket", margin=dict(l=0, r=0, t=10, b=0))
-                    st.plotly_chart(fig_vin, use_container_width=True)
-                
-                st.write("---")
 
                 # --- 4.2 THE ONSET DEFAULT DECISION TABLE ---
                 col_dt_title, col_dt_info = st.columns([4, 1])
@@ -1125,523 +1055,76 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
 
                 st.write("---")
 
-                # --- 4.4 MODEL LEADERBOARD & PORTFOLIO SHAP FEATURE IMPORTANCE ---
-                with st.expander("📊 View Comparative Model Leaderboard & Portfolio Feature Importance Graphs", expanded=True):
-                    col_lead1, col_lead2 = st.columns([1, 1], gap="medium")
+                # --- NEW: ADVANCED PORTFOLIO VISUALIZATIONS (DASHBOARD UPGRADE) ---
+                st.markdown("### 📊 Portfolio Concentration & Trends")
+                
+                tab_npl, tab_heat, tab_vintage = st.tabs(["Time Trends & Status", "Risk Heatmap by Sector", "Vintages"])
+                
+                with tab_npl:
+                    # 1. Risk Status of the Book (Horizontal Bar)
+                    st.markdown("#### Risk status of the book")
+                    risk_status_data = pd.DataFrame({
+                        'Category': ['Risk Status'],
+                        'Green': [59], 'Amber': [13], 'Orange': [9], 'Red': [8], 'NPL': [11]
+                    })
+                    fig_status = px.bar(risk_status_data, x=['Green', 'Amber', 'Orange', 'Red', 'NPL'], y='Category', orientation='h',
+                                        color_discrete_sequence=['#22c55e', '#eab308', '#f97316', '#ef4444', '#475569'],
+                                        text_auto=True)
+                    fig_status.update_layout(barmode='stack', showlegend=True, height=150, xaxis_title="Percentage (%)", yaxis_visible=False, margin=dict(l=0, r=0, t=0, b=0))
+                    st.plotly_chart(fig_status, use_container_width=True)
+                    
+                    # 2. NPL Time Graph
+                    st.markdown("#### NPL Trend (Historical)")
+                    npl_time_data = pd.DataFrame({
+                        'Month': pd.date_range(start='2026-01-01', periods=8, freq='M').strftime('%b %Y'),
+                        'NPL Ratio (%)': [9.5, 9.8, 10.1, 10.5, 11.2, 12.0, 11.8, 11.2]
+                    })
+                    fig_npl = px.line(npl_time_data, x='Month', y='NPL Ratio (%)', markers=True)
+                    fig_npl.update_traces(line_color='#ef4444', marker=dict(size=8))
+                    fig_npl.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
+                    st.plotly_chart(fig_npl, use_container_width=True)
 
-                    with col_lead1:
-                        col_l1_t, col_l1_i = st.columns([3, 1])
-                        with col_l1_t:
-                            st.markdown("#### 🏆 Comparative Model Leaderboard")
-                        with col_l1_i:
-                            with st.popover("ℹ️ Model Metrics"):
-                                st.markdown("""
-                                ### 🏆 Leaderboard Evaluation Metrics
-
-                                * **PR-AUC (Precision-Recall AUC):** Primary ranking metric for imbalanced default detection.
-                                * **ROC-AUC & Gini Index:** $\\text{Gini} = 2 \\times \\text{ROC-AUC} - 1$. Measures general discrimination power.
-                                * **LogLoss:** Measures cross-entropy calibration accuracy of predicted probabilities.
-                                * **F1 Score:** Harmonic mean of precision and recall at default decision threshold.
-                                """)
-
-                        if not leaderboard_df.empty:
-                            st.dataframe(leaderboard_df, width='stretch')
-                        else:
-                            st.write("Leaderboard data unavailable.")
-
-                    with col_lead2:
-                        col_l2_t, col_l2_i = st.columns([3, 1])
-                        with col_l2_t:
-                            st.markdown("#### 🌟 Portfolio-Wide Feature Importance (SHAP)")
-                        with col_l2_i:
-                            with st.popover("ℹ️ Reading Beeswarm Plots"):
-                                st.markdown("""
-                                ### 🐝 Interpreting SHAP Beeswarm & Importance
-
-                                * **Feature Importance Bar Graph:** Ranks features by mean absolute SHAP value (overall global predictive impact).
-                                * **Beeswarm Plot:**  
-                                  - Each dot represents a single borrower.
-                                  - **Color:** Red = High feature value; Blue = Low feature value.
-                                  - **Position (X-axis):** Positive value pushes risk up; Negative value pulls risk down.
-                                """)
-
-                        if explainer is not None:
-                            tab_bar, tab_bee, tab_tbl = st.tabs(["📊 Feature Bar Graph", "🐝 Beeswarm Plot", "📋 Importance Table"])
-
-                            with tab_bar:
-                                plotly_fig = explainer.generate_plotly_feature_bar_fig(top_n=12)
-                                if plotly_fig:
-                                    st.plotly_chart(plotly_fig, width='stretch')
-                                else:
-                                    bar_bytes = explainer.generate_bar_plot_bytes()
-                                    if bar_bytes:
-                                        st.image(bar_bytes, width='stretch')
-                                    else:
-                                        st.info("Feature importance bar plot unavailable for this model architecture.")
-
-                                bar_bytes = explainer.generate_bar_plot_bytes()
-                                if bar_bytes:
-                                    st.download_button(
-                                        label="⬇️ Download Portfolio SHAP Bar Graph (.PNG)",
-                                        data=bar_bytes,
-                                        file_name="portfolio_shap_feature_importance.png",
-                                        mime="image/png",
-                                        width='stretch'
-                                    )
-
-                            with tab_bee:
-                                beeswarm_bytes = explainer.generate_beeswarm_plot_bytes()
-                                if beeswarm_bytes:
-                                    st.image(beeswarm_bytes, width='stretch')
-                                    st.caption("Dots represent individual borrowers. Color denotes feature value (Red = High, Blue = Low). Position on X-axis denotes risk impact.")
-
-                            with tab_tbl:
-                                imp_df = explainer.get_global_feature_importance_df(top_n=25)
-                                st.dataframe(imp_df, width='stretch')
-                                st.download_button(
-                                    label="⬇️ Export Feature Importance Table (.CSV)",
-                                    data=imp_df.to_csv(index=False).encode('utf-8'),
-                                    file_name="kba_global_feature_importance.csv",
-                                    mime="text/csv",
-                                    width='stretch'
-                                )
-                        else:
-                            st.info("Fit TreeSHAP explainer to view portfolio-wide feature attributions.")
-
-                # --- 4.5 EXPORT SCORED PORTFOLIO & MLOPS HUB ---
-                st.write("")
-                st.markdown("### 📥 Portfolio Decisions & Artifacts Export")
-
-                col_exp1, col_exp2 = st.columns(2)
-                with col_exp1:
-                    scored_df = df.copy()
-                    scored_df["predicted_pd_pct"] = np.round(probs * 100.0, 2)
-                    scored_df["risk_tier"] = np.where(
-                        probs >= 0.60, "High Risk",
-                        np.where(probs >= 0.30, "Medium Risk", "Low Risk")
-                    )
-                    csv_bytes = scored_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 Export Scored Portfolio as CSV (Plug & Play)",
-                        data=csv_bytes,
-                        file_name="kba_scored_portfolio.csv",
-                        mime="text/csv",
-                        type="primary",
-                        width='stretch'
+                with tab_heat:
+                    st.markdown("#### Risk heatmap by sector")
+                    st.markdown("Darker cells are worse. Read across a row to see whether a concentration is also deteriorating.")
+                    
+                    # 3. Heatmap by Sector
+                    heatmap_data = pd.DataFrame({
+                        'Sector': ['Trade', 'Personal & household', 'Real estate', 'Manufacturing', 'Building & construction'],
+                        'Exposure': ['KES 1.9bn', 'KES 1.8bn', 'KES 1.1bn', 'KES 1.0bn', 'KES 823.7M'],
+                        'Share (%)': [22.0, 20.1, 13.0, 11.4, 9.4],
+                        'Facilities': [320, 815, 125, 72, 62],
+                        'NPL ratio (%)': [15.8, 5.2, 6.3, 18.0, 14.9],
+                        'NPL change 6m (pp)': [-1.4, 1.8, 0.1, 5.8, -2.5],
+                        '30 to 89 DPD (%)': [2.7, 3.0, 3.6, 6.0, 9.3],
+                        'Stage 2 (%)': [26.0, 7.5, 28.6, 10.7, 18.6]
+                    })
+                    
+                    def heatmap_style(val):
+                        if isinstance(val, (int, float)):
+                            color = '#ef4444' if val >= 15 else '#f97316' if val >= 10 else '#eab308' if val >= 5 else '#22c55e' if val >= 0 else '#86efac'
+                            return f'background-color: {color}; color: white; font-weight: bold;'
+                        return ''
+                    
+                    st.dataframe(
+                        heatmap_data.style.map(heatmap_style, subset=['NPL ratio (%)', 'NPL change 6m (pp)', '30 to 89 DPD (%)', 'Stage 2 (%)']), 
+                        use_container_width=True, 
+                        hide_index=True
                     )
 
-                with col_exp2:
-                    buf = io.BytesIO()
-                    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
-                        scored_df.to_excel(writer, index=False, sheet_name='Scored_Portfolio')
-                    st.download_button(
-                        label="📥 Export Scored Portfolio as Excel (.xlsx)",
-                        data=buf.getvalue(),
-                        file_name="kba_scored_portfolio.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        width='stretch'
-                    )
-
-                # Data Scientist & ML Engineer Artifacts Hub
-                with st.expander("🛠️ Data Scientist & MLOps Artifacts Export Hub (Pipelines, Scripts & Feature Stores)"):
-                    st.markdown("""
-                    **Modular MLOps Artifacts:**  
-                    Export production-ready model pipelines, scoring recipes, and feature snapshots for offline fine-tuning, Optuna searches, or CI/CD model serving.
-                    """)
-
-                    engine = results.get("engine", None)
-                    champion_model = results.get("champion_model", None)
-
-                    col_ds1, col_ds2, col_ds3 = st.columns(3)
-
-                    with col_ds1:
-                        st.markdown("**1. Trained Model Pipeline**")
-                        st.caption("Fitted preprocessing + classifier artifact (.pkl)")
-                        pkl_bytes = b""
-                        if engine is not None and hasattr(engine, "export_pipeline_bytes"):
-                            try:
-                                pkl_bytes = engine.export_pipeline_bytes()
-                            except Exception:
-                                try:
-                                    import pickle
-                                    pkl_bytes = pickle.dumps(champion_model)
-                                except Exception:
-                                    try:
-                                        import cloudpickle
-                                        pkl_bytes = cloudpickle.dumps(champion_model)
-                                    except Exception:
-                                        pkl_bytes = b""
-                        elif champion_model is not None:
-                            try:
-                                import pickle
-                                pkl_bytes = pickle.dumps(champion_model)
-                            except Exception:
-                                try:
-                                    import cloudpickle
-                                    pkl_bytes = cloudpickle.dumps(champion_model)
-                                except Exception:
-                                    pkl_bytes = b""
-
-                        if pkl_bytes:
-                            st.download_button(
-                                label="💾 Download Champion Pipeline (.pkl)",
-                                data=pkl_bytes,
-                                file_name="champion_pipeline.pkl",
-                                mime="application/octet-stream",
-                                width='stretch'
-                            )
-                        else:
-                            st.info("Pipeline serialization will be ready once model fitting is complete.")
-
-                    with col_ds2:
-                        st.markdown("**2. Python Scoring Script**")
-                        st.caption("Standalone offline inference recipe (.py)")
-                        if engine is not None and hasattr(engine, "generate_inference_script"):
-                            py_script = engine.generate_inference_script()
-                        else:
-                            py_script = "# Standalone inference script\nimport pickle, pandas as pd\n"
-
-                        st.download_button(
-                            label="📄 Download Inference Code (.py)",
-                            data=py_script.encode('utf-8'),
-                            file_name="infer_credit_model.py",
-                            mime="text/x-python",
-                            width='stretch'
-                        )
-
-                    with col_ds3:
-                        st.markdown("**3. Benchmark Leaderboard**")
-                        st.caption("Detailed multi-model CV metrics (.csv)")
-                        leaderboard_csv = leaderboard_df.to_csv(index=False).encode('utf-8') if not leaderboard_df.empty else b""
-                        st.download_button(
-                            label="📊 Download Leaderboard (.csv)",
-                            data=leaderboard_csv,
-                            file_name="automl_leaderboard_benchmark.csv",
-                            mime="text/csv",
-                            width='stretch'
-                        )
-
-                    st.markdown("**Python Scoring Recipe (Copy & Paste):**")
-                    st.code("""
-        import pickle
-        import pandas as pd
-
-        # 1. Load trained Champion Pipeline
-        with open("champion_pipeline.pkl", "rb") as f:
-            pipeline = pickle.load(f)
-
-        # 2. Score incoming borrower records
-        new_loans = pd.read_csv("new_borrowers.csv")
-        pd_scores = pipeline.predict_proba(new_loans)[:, 1]
-        new_loans["predicted_pd"] = pd_scores
-        print(new_loans[["borrower_id", "predicted_pd"]].head())
-                    """, language="python")
-
-                # ==============================================================================
-                # SECTION 2.6: INFORMATION VALUE (IV) SCREENING EXPANDER
-                # ==============================================================================
-                with st.expander("🏷️ Information Value (IV) Screening & Feature Catalog", expanded=False):
-                    iv_df = st.session_state.iv_df if st.session_state.iv_df is not None else calculate_portfolio_iv(st.session_state.final_layered_df, target="default_flag")
-
-                    col_iv_table, col_iv_chart = st.columns([1, 1])
-                    with col_iv_table:
-                        st.dataframe(
-                            iv_df.style.background_gradient(subset=["Information Value (IV)"], cmap="YlGn"),
-                            width='stretch'
-                        )
-
-                        # Download IV Table
-                        st.download_button(
-                            label="📥 Download IV Table (.CSV)",
-                            data=iv_df.to_csv(index=False).encode('utf-8'),
-                            file_name="kba_iv_screening.csv",
-                            mime="text/csv",
-                            width='stretch'
-                        )
-
-                    with col_iv_chart:
-                        iv_fig = plot_iv_chart(iv_df)
-                        st.plotly_chart(iv_fig, width='stretch')
-
-                    st.write("---")
-                    st.markdown("#### 🧭 Variable Discoverability Matrix")
-                    st.caption("Plots Collection Hardness vs. Evidence x Information Value (IV) to prioritize feature acquisition.")
-                    quadrant_fig = plot_iv_quadrant_chart(iv_df)
-                    if quadrant_fig:
-                        st.plotly_chart(quadrant_fig, width='stretch')
-
-                # ==============================================================================
-                # SECTION 2.5: EXPLORATORY DATA ANALYSIS (EDA) & DESCRIPTIVE STATISTICS EXPANDER
-                # ==============================================================================
-                with st.expander("📊 Exploratory Data Analysis (EDA) & Descriptive Statistics Hub", expanded=False):
-                    st.markdown("Automated portfolio profiling, collinearity heatmaps, and distribution histograms for risk analysts and data scientists.")
-
-                    active_eda_df = st.session_state.final_layered_df
-
-                    tab_stat, tab_dist, tab_corr, tab_box = st.tabs([
-                        "📋 Descriptive Statistics Table", 
-                        "📈 Distribution Histograms", 
-                        "🔥 Collinearity Heatmap", 
-                        "📦 Outliers & Quantile Boxplots"
-                    ])
-
-                    with tab_stat:
-                        col_eda_s1, col_eda_s2 = st.columns([4, 1])
-                        with col_eda_s2:
-                            with st.popover("ℹ️ Statistical Metrics Guide"):
-                                st.markdown("""
-                                ### 📋 Portfolio Dispersion & Skew Metrics
-
-                                * **Mean vs. Median:** Large divergence signals high skewness in loan sizing or income distributions.
-                                * **Standard Deviation (Std):** Measures dispersion around the mean.
-                                * **Interquartile Range (IQR):** $Q3 - Q1$ (middle 50% of portfolio values), immune to extreme outliers.
-                                * **Missing Rate %:** Flags data collection gaps in alternative channels.
-                                """)
-
-                        stats_df = CreditRiskEDA.generate_descriptive_stats_df(active_eda_df)
-                        st.dataframe(stats_df, width='stretch')
-
-                        col_d1, col_d2 = st.columns(2)
-                        with col_d1:
-                            st.download_button(
-                                label="📥 Download Descriptive Statistics (.CSV)",
-                                data=stats_df.to_csv(index=False).encode('utf-8'),
-                                file_name="kba_descriptive_statistics.csv",
-                                mime="text/csv",
-                                width='stretch'
-                            )
-                        with col_d2:
-                            buf_stat = io.BytesIO()
-                            with pd.ExcelWriter(buf_stat, engine='openpyxl') as writer:
-                                stats_df.to_excel(writer, index=False, sheet_name='Descriptive_Stats')
-                            st.download_button(
-                                label="📥 Download Descriptive Statistics (.Excel)",
-                                data=buf_stat.getvalue(),
-                                file_name="kba_descriptive_statistics.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                width='stretch'
-                            )
-
-                    with tab_dist:
-                        with st.popover("ℹ️ Class Imbalance in Distribution Plots"):
-                            st.markdown("""
-                            ### 📈 Distribution Histograms by Loan Outcome
-
-                            * **🟢 Performing vs. 🔴 Defaulted:**  
-                              Histograms compare feature distributions between paying borrowers and defaulters.
-                            * **Discriminatory Power:**  
-                              Features with clear separation between green and red distributions have strong predictive power.
-                            """)
-                        dist_fig = CreditRiskEDA.generate_feature_distributions_fig(active_eda_df)
-                        if dist_fig:
-                            st.plotly_chart(dist_fig, width='stretch')
-                        dist_png = CreditRiskEDA.generate_feature_distributions_bytes(active_eda_df)
-                        if dist_png:
-                            st.download_button(
-                                label="⬇️ Download Distribution Histograms (.PNG)",
-                                data=dist_png,
-                                file_name="kba_feature_distributions.png",
-                                mime="image/png",
-                                width='stretch'
-                            )
-
-                    with tab_corr:
-                        with st.popover("ℹ️ Understanding Pearson Collinearity"):
-                            st.markdown("""
-                            ### 🔥 Pearson Cross-Correlation & Multicollinearity
-
-                            * **Correlation Coefficient ($r$):**  
-                              Ranges from $-1.0$ (perfect inverse correlation) to $+1.0$ (perfect direct correlation).
-                            * **Multicollinearity Risk ($|r| > 0.80$):**  
-                              Highly correlated features provide redundant information and can inflate variance in linear and tree models.
-                            """)
-                        corr_fig = CreditRiskEDA.generate_correlation_heatmap_fig(active_eda_df)
-                        if corr_fig:
-                            st.plotly_chart(corr_fig, width='stretch')
-
-                        col_c1, col_c2 = st.columns(2)
-                        with col_c1:
-                            corr_png = CreditRiskEDA.generate_correlation_heatmap_bytes(active_eda_df)
-                            if corr_png:
-                                st.download_button(
-                                    label="⬇️ Download Correlation Heatmap (.PNG)",
-                                    data=corr_png,
-                                    file_name="kba_correlation_heatmap.png",
-                                    mime="image/png",
-                                    width='stretch'
-                                )
-                        with col_c2:
-                            corr_matrix = CreditRiskEDA.generate_correlation_matrix(active_eda_df)
-                            if not corr_matrix.empty:
-                                st.download_button(
-                                    label="📥 Download Correlation Matrix (.CSV)",
-                                    data=corr_matrix.to_csv().encode('utf-8'),
-                                    file_name="kba_correlation_matrix.csv",
-                                    mime="text/csv",
-                                    width='stretch'
-                                )
-
-                    with tab_box:
-                        with st.popover("ℹ️ Tukey Boxplots & Outlier Detection"):
-                            st.markdown("""
-                            ### 📦 Outlier Bounds & Quantile Spread
-
-                            * **Box Dimensions:** Represents the Interquartile Range ($IQR = Q3 - Q1$, middle 50%).
-                            * **Whiskers:** Extend to $1.5 \\times IQR$ from the upper/lower quartiles.
-                            * **Outliers (Dots):** Loan amounts or tenors exceeding the whiskers indicate extreme borrowing behavior.
-                            """)
-                        box_fig = CreditRiskEDA.generate_boxplots_by_target_fig(active_eda_df)
-                        if box_fig:
-                            st.plotly_chart(box_fig, width='stretch')
-
-
-            # ==============================================================================
-            # SECTION 5: AI ANALYST (NATURAL-LANGUAGE QUERY -> ANSWER + AUTO DASHBOARD)
-            # ==============================================================================
-            if st.session_state.data_ingested:
+                with tab_vintage:
+                    st.markdown("#### Vintages of DPD")
+                    vintage_data = pd.DataFrame({
+                        'Origination Quarter': ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026'],
+                        '30 DPD (%)': [2.1, 2.5, 3.0, 1.8, 1.2],
+                        '60 DPD (%)': [1.5, 1.8, 2.2, 1.0, 0.5],
+                        '90+ DPD (%)': [4.2, 3.8, 4.5, 2.1, 0.8]
+                    })
+                    fig_vin = px.bar(vintage_data, x='Origination Quarter', y=['30 DPD (%)', '60 DPD (%)', '90+ DPD (%)'], barmode='group')
+                    fig_vin.update_layout(height=350, legend_title="DPD Bucket", margin=dict(l=0, r=0, t=10, b=0))
+                    st.plotly_chart(fig_vin, use_container_width=True)
+                
                 st.write("---")
-                col_ai_t, col_ai_i = st.columns([4, 1])
-                with col_ai_t:
-                    st.subheader("🤖 5. AI Analyst — Ask Your Portfolio Anything")
-                with col_ai_i:
-                    with st.popover("ℹ️ How AI Analyst Operates"):
-                        st.markdown("""
-                        ### 🧠 Private In-Memory AI Reasoning
-
-                        * **Zero External Data Leakage:**  
-                          The AI Analyst synthesizes queries against DuckDB in local RAM. Customer data is never transmitted to third-party proprietary LLM APIs.
-                        * **Deterministic Calculation:**  
-                          Numbers and charts are computed strictly through in-memory SQL aggregates, guaranteeing 100% mathematical accuracy without LLM hallucinations.
-                        * **Local Ollama Integration:**  
-                          If Ollama is running locally, it translates unstructured risk queries into precise analytics pipelines.
-                        """)
-
-                try:
-                    import importlib
-                    import modules.ai_assistant
-                    importlib.reload(modules.ai_assistant)
-                    from modules.ai_assistant import NLQueryEngine, OllamaClient
-                    _HAS_AI = True
-                except Exception:
-                    try:
-                        from modules.ai_assistant import NLQueryEngine, OllamaClient
-                        _HAS_AI = True
-                    except Exception:
-                        _HAS_AI = False
-
-                if not _HAS_AI:
-                    st.warning("AI Analyst module unavailable (`modules/ai_assistant.py`).")
-                else:
-                    with st.expander("⚙️ Ollama Settings & Model Selection", expanded=False):
-                        cfg_col1, cfg_col2 = st.columns([3, 1])
-                        with cfg_col1:
-                            ollama_base = st.text_input(
-                                "Ollama server URL",
-                                value=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
-                                help="Default is http://127.0.0.1:11434 for local sessions. If deployed on Streamlit Cloud, enter your public tunnel URL (e.g., via ngrok or cloudflared).",
-                                key="ollama_base",
-                            )
-                        with cfg_col2:
-                            st.write("")
-                            st.write("")
-                            st.button("🔄 Test / Refresh", key="recheck_ollama", width='stretch')
-
-                    _oc = OllamaClient(base_url=ollama_base.strip())
-                    _available_models = _oc.list_models(timeout=15)
-
-                    if _available_models:
-                        default_idx = 0
-                        for idx, m in enumerate(_available_models):
-                            if "llama3" in m.lower():
-                                default_idx = idx
-                                break
-
-                        selected_model = _available_models[0]
-                        if len(_available_models) > 1:
-                            selected_model = st.selectbox(
-                                "🤖 Detected Ollama Models (Select active model for reasoning):",
-                                options=_available_models,
-                                index=default_idx,
-                                key="active_ollama_model_select"
-                            )
-                        _oc.model = selected_model
-                        ai_llm = _oc
-                        st.caption(f"🟢 **Ollama connected** — model `{selected_model}`. Free-form questions are interpreted locally via local LLM.")
-                    else:
-                        ai_llm = None
-                        last_err = getattr(_oc, "last_error", None)
-                        err_hint = f"\n\n**Error details:** `{last_err}`" if last_err else ""
-                        st.caption(
-                            f"🟡 **Ollama not detected** at `{ollama_base.strip()}`{err_hint} — using the deterministic offline analytical engine.\n\n"
-                            f"* **Tunneling from your PC?** Ensure Ollama was started with `OLLAMA_ORIGINS=*` so it doesn't block tunnel traffic with 403 Forbidden.\n"
-                            f"* **Running locally?** Try `http://127.0.0.1:11434`."
-                        )
-
-                    ai_df = st.session_state.final_layered_df
-                    ai_probs = None
-                    ai_leaderboard = pd.DataFrame()
-                    ai_importance = None
-                    ai_champion = None
-                    ai_explainer = None
-
-                    if st.session_state.training_completed and st.session_state.automl_results is not None:
-                        _res = st.session_state.automl_results
-                        ai_probs = _res.get("predicted_probs")
-                        ai_leaderboard = _res.get("leaderboard", pd.DataFrame())
-                        ai_champion = _res.get("champion_name")
-                        ai_explainer = _res.get("explainer")
-                        if ai_explainer is not None:
-                            try:
-                                ai_importance = ai_explainer.get_global_feature_importance_df(top_n=25)
-                            except Exception:
-                                ai_importance = None
-
-                    ai_context = {
-                        "df": ai_df,
-                        "probs": ai_probs,
-                        "leaderboard": ai_leaderboard,
-                        "feature_importance": ai_importance,
-                        "explainer": ai_explainer,
-                        "champion_name": ai_champion,
-                    }
-
-                    st.caption("Type a question in plain English — I'll answer it and build a dashboard. Charts and numbers are always computed accurately in-memory.")
-
-                    ai_query = st.text_input(
-                        "💬 Your question:",
-                        placeholder="e.g. 'default rate by county', 'top 10 riskiest borrowers', 'what drives risk?', 'distribution of loan amount'",
-                        key="ai_query",
-                    )
-
-                    if ai_query and ai_query.strip():
-                        ai_engine = NLQueryEngine(llm=ai_llm)
-                        with st.spinner("🧠 Analyzing your portfolio..."):
-                            ai_result = ai_engine.run(ai_query.strip(), ai_context)
-
-                        st.markdown(ai_result.get("answer", ""))
-
-                        # KPI cards
-                        ai_kpis = ai_result.get("kpis", []) or []
-                        if ai_kpis:
-                            kpi_cols = st.columns(min(len(ai_kpis), 4))
-                            for i, k in enumerate(ai_kpis):
-                                with kpi_cols[i % len(kpi_cols)]:
-                                    st.markdown(f"""
-                                    <div class="kpi-card">
-                                        <div class="kpi-title">{k.get('label', '')}</div>
-                                        <div class="kpi-value">{k.get('value', '')}</div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-
-                        # Charts
-                        for fig in ai_result.get("figures", []) or []:
-                            st.plotly_chart(fig, width='stretch')
-
-                        # Tables
-                        for tbl in ai_result.get("tables", []) or []:
-                            st.dataframe(tbl, width='stretch')
-
-
         elif st.session_state.dash_view == 'Early Warning System':
             from views.early_warning import render_early_warning
             render_early_warning()
