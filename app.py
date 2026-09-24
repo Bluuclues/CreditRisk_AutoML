@@ -288,16 +288,16 @@ tab_engine, tab_sources = st.tabs([
 # ##############################################################################
 with tab_engine:
 
-st.markdown('''
-<style>
-/* Make sidebar buttons smaller */
-div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stButton"] > button {
-    padding: 0.25rem 0.5rem !important;
-    min-height: 2.5rem !important;
-    font-size: 14px !important;
-}
-</style>
-''', unsafe_allow_html=True)
+    st.markdown('''
+    <style>
+    /* Make sidebar buttons smaller */
+    div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stButton"] > button {
+        padding: 0.25rem 0.5rem !important;
+        min-height: 2.5rem !important;
+        font-size: 14px !important;
+    }
+    </style>
+    ''', unsafe_allow_html=True)
 
     
     # We define sample_csv here since we removed the expander that used to define it
