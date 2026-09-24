@@ -1164,38 +1164,66 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
             st.write("---")
 
             # --- NEW: Discoverability & Variability Matrix ---
-            st.markdown("### 🧮 Data Discoverability & Variability Matrices")
-            st.markdown("Assess the availability, compliance, and latency of each data stream, followed by their internal correlations.")
+            st.markdown("### 🧮 Variable Discoverability Matrix & Evaluation Framework")
             
-            # Data Discoverability Matrix
-            st.markdown("#### 1. Alternative Data Discoverability Matrix")
-            discover_data = []
+            # Quadrant Scatter Plot
             import random
+            random.seed(42)
+            
+            scatter_data = []
             for item in DATA_SOURCES_CATALOG:
-                discover_data.append({
+                scatter_data.append({
                     "Variable": item["variable"],
-                    "Geographic Coverage": "National (47 Counties)" if random.random() > 0.3 else "Urban Centers Only",
-                    "Update Latency": item["last_updated"],
-                    "API Availability": "Open API" if "API" in item["collection_method"] else "Web Scraping",
-                    "Privacy (PII)": "Zero-PII (Public)" if item["category"] != "Mobile Money Telemetry" else "Consented Private"
+                    "Collection Hardness": random.uniform(10, 90),
+                    "Evidence & Value": random.uniform(10, 90),
+                    "Category": item["category"]
                 })
             
-            df_discover = pd.DataFrame(discover_data)
+            df_scatter = pd.DataFrame(scatter_data)
             
-            def style_discover(val):
-                if val == "National (47 Counties)": return 'color: #16a34a; font-weight: bold;'
-                if val == "Urban Centers Only": return 'color: #ea580c;'
-                if val == "Open API": return 'color: #2563eb; font-weight: bold;'
-                if val == "Web Scraping": return 'color: #94a3b8;'
-                if val == "Zero-PII (Public)": return 'color: #16a34a;'
-                if val == "Consented Private": return 'color: #dc2626; font-weight: bold;'
-                return ''
-
-            st.dataframe(
-                df_discover.style.map(style_discover, subset=["Geographic Coverage", "API Availability", "Privacy (PII)"]),
-                use_container_width=True,
-                hide_index=True
+            fig_quad = px.scatter(
+                df_scatter, 
+                x="Collection Hardness", 
+                y="Evidence & Value", 
+                text="Variable",
+                color="Category",
+                hover_data=["Variable"]
             )
+            
+            # Style the quadrant chart
+            fig_quad.update_traces(textposition='top center', marker=dict(size=10, opacity=0.8))
+            fig_quad.add_hline(y=50, line_dash="dash", line_color="orange", opacity=0.7)
+            fig_quad.add_vline(x=50, line_dash="dash", line_color="orange", opacity=0.7)
+            
+            fig_quad.update_layout(
+                height=450,
+                margin=dict(l=20, r=20, t=20, b=20),
+                xaxis=dict(range=[0, 100], title="COLLECTION HARDNESS (Low → High)", showgrid=False),
+                yaxis=dict(range=[0, 100], title="EVIDENCE & VALUE (Low → High)", showgrid=False),
+                showlegend=False,
+                plot_bgcolor="white"
+            )
+            
+            st.plotly_chart(fig_quad, use_container_width=True)
+            
+            st.markdown("#### QUANTITATIVE EVALUATION METRICS (IV & WoE)")
+            
+            col_iv, col_woe = st.columns(2)
+            with col_iv:
+                st.markdown(f"""
+                <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; border-top: 4px solid #ea580c; height: 100%;">
+                    <h5 style="color: #431407; margin-bottom: 8px;">Information Value (IV)</h5>
+                    <p style="color: #78350f; font-size: 14px; margin: 0;">Measures overall predictive power of a given variable in distinguishing between good and bad loans within the automated machine learning environment.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_woe:
+                st.markdown(f"""
+                <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; border-top: 4px solid #ea580c; height: 100%;">
+                    <h5 style="color: #431407; margin-bottom: 8px;">Weight of Evidence (WoE)</h5>
+                    <p style="color: #78350f; font-size: 14px; margin: 0;">Calculates predictive strength of each attribute within a variable, dynamically scaling IV to ensure only robust, responsive variables enter the final ensemble.</p>
+                </div>
+                """, unsafe_allow_html=True)
             
             st.write("---")
             
