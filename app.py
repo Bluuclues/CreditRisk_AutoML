@@ -46,6 +46,10 @@ with st.sidebar:
         /* --- SIDEBAR STYLING --- */
         [data-testid="stSidebar"] {{
             background-color: #2b5b7c !important;
+            border-right: 5px solid #f8fafc !important;
+        }}
+        [data-testid="block-container"] {{
+            padding-left: 3rem !important;
         }}
         [data-testid="stSidebar"] * {{
             color: #f8fafc !important;
