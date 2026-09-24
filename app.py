@@ -39,16 +39,16 @@ st.set_page_config(
 
 with st.sidebar:
     logo_b64 = _b64(LOGO_PATH)
-    logo_html = f"<img src='{logo_b64}' alt='Logo' style='height: 64px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);'/>" if logo_b64 else "<span style='font-size: 42px;'>🏦</span>"
+    logo_html = f"<img src='{logo_b64}' alt='Logo' style='height: 48px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'/>" if logo_b64 else "<span style='font-size: 36px;'>🏦</span>"
 
     st.markdown(f"""
     <style>
         /* --- SIDEBAR STYLING --- */
         [data-testid="stSidebar"] {{
-            background-color: #0f2537 !important;
+            background-color: #2b5b7c !important;
         }}
         [data-testid="stSidebar"] * {{
-            color: #e2e8f0 !important;
+            color: #f8fafc !important;
         }}
         /* Selectbox inside sidebar */
         [data-testid="stSidebar"] div[data-baseweb="select"] > div {{
@@ -67,13 +67,13 @@ with st.sidebar:
         }}
     </style>
     
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 30px; text-align: center;">
-        <div style="margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; margin-bottom: 30px;">
+        <div style="margin-right: 14px; display: flex; align-items: center;">
             {logo_html}
         </div>
         <div>
-            <div style="font-weight: 800; font-size: 20px; color: white; line-height: 1.2;">Credit Analyze</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Risk & Analytics Engine</div>
+            <div style="font-weight: 800; font-size: 20px; color: white; line-height: 1.1;">Credit Analyze</div>
+            <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px;">Risk & Analytics Engine</div>
         </div>
     </div>
     
