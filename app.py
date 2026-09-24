@@ -899,6 +899,77 @@ if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
                     """, unsafe_allow_html=True)
 
                 st.write("")
+                
+                # --- NEW: ADVANCED PORTFOLIO VISUALIZATIONS (DASHBOARD UPGRADE) ---
+                st.markdown("### 📊 Portfolio Concentration & Trends")
+                
+                tab_npl, tab_heat, tab_vintage = st.tabs(["Time Trends & Status", "Risk Heatmap by Sector", "Vintages"])
+                
+                with tab_npl:
+                    # 1. Risk Status of the Book (Horizontal Bar)
+                    st.markdown("#### Risk status of the book")
+                    risk_status_data = pd.DataFrame({
+                        'Category': ['Risk Status'],
+                        'Green': [59], 'Amber': [13], 'Orange': [9], 'Red': [8], 'NPL': [11]
+                    })
+                    fig_status = px.bar(risk_status_data, x=['Green', 'Amber', 'Orange', 'Red', 'NPL'], y='Category', orientation='h',
+                                        color_discrete_sequence=['#22c55e', '#eab308', '#f97316', '#ef4444', '#475569'],
+                                        text_auto=True)
+                    fig_status.update_layout(barmode='stack', showlegend=True, height=150, xaxis_title="Percentage (%)", yaxis_visible=False, margin=dict(l=0, r=0, t=0, b=0))
+                    st.plotly_chart(fig_status, use_container_width=True)
+                    
+                    # 2. NPL Time Graph
+                    st.markdown("#### NPL Trend (Historical)")
+                    npl_time_data = pd.DataFrame({
+                        'Month': pd.date_range(start='2026-01-01', periods=8, freq='ME').strftime('%b %Y'),
+                        'NPL Ratio (%)': [9.5, 9.8, 10.1, 10.5, 11.2, 12.0, 11.8, 11.2]
+                    })
+                    fig_npl = px.line(npl_time_data, x='Month', y='NPL Ratio (%)', markers=True)
+                    fig_npl.update_traces(line_color='#ef4444', marker=dict(size=8))
+                    fig_npl.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0))
+                    st.plotly_chart(fig_npl, use_container_width=True)
+
+                with tab_heat:
+                    st.markdown("#### Risk heatmap by sector")
+                    st.markdown("Darker cells are worse. Read across a row to see whether a concentration is also deteriorating.")
+                    
+                    # 3. Heatmap by Sector
+                    heatmap_data = pd.DataFrame({
+                        'Sector': ['Trade', 'Personal & household', 'Real estate', 'Manufacturing', 'Building & construction'],
+                        'Exposure': ['KES 1.9bn', 'KES 1.8bn', 'KES 1.1bn', 'KES 1.0bn', 'KES 823.7M'],
+                        'Share (%)': [22.0, 20.1, 13.0, 11.4, 9.4],
+                        'Facilities': [320, 815, 125, 72, 62],
+                        'NPL ratio (%)': [15.8, 5.2, 6.3, 18.0, 14.9],
+                        'NPL change 6m (pp)': [-1.4, 1.8, 0.1, 5.8, -2.5],
+                        '30 to 89 DPD (%)': [2.7, 3.0, 3.6, 6.0, 9.3],
+                        'Stage 2 (%)': [26.0, 7.5, 28.6, 10.7, 18.6]
+                    })
+                    
+                    def heatmap_style(val):
+                        if isinstance(val, (int, float)):
+                            color = '#ef4444' if val >= 15 else '#f97316' if val >= 10 else '#eab308' if val >= 5 else '#22c55e' if val >= 0 else '#86efac'
+                            return f'background-color: {color}; color: white; font-weight: bold;'
+                        return ''
+                    
+                    st.dataframe(
+                        heatmap_data.style.map(heatmap_style, subset=['NPL ratio (%)', 'NPL change 6m (pp)', '30 to 89 DPD (%)', 'Stage 2 (%)']), 
+                        use_container_width=True, 
+                        hide_index=True
+                    )
+
+                with tab_vintage:
+                    st.markdown("#### Vintages of DPD")
+                    vintage_data = pd.DataFrame({
+                        'Origination Quarter': ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026'],
+                        '30 DPD (%)': [2.1, 2.5, 3.0, 1.8, 1.2],
+                        '60 DPD (%)': [1.5, 1.8, 2.2, 1.0, 0.5],
+                        '90+ DPD (%)': [4.2, 3.8, 4.5, 2.1, 0.8]
+                    })
+                    fig_vin = px.bar(vintage_data, x='Origination Quarter', y=['30 DPD (%)', '60 DPD (%)', '90+ DPD (%)'], barmode='group')
+                    fig_vin.update_layout(height=350, legend_title="DPD Bucket", margin=dict(l=0, r=0, t=10, b=0))
+                    st.plotly_chart(fig_vin, use_container_width=True)
+                
+                st.write("---")
 
                 # --- 4.2 THE ONSET DEFAULT DECISION TABLE ---
                 col_dt_title, col_dt_info = st.columns([4, 1])
