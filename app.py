@@ -74,43 +74,122 @@ with st.sidebar:
     
     <style>
         .sb-header { font-size: 12px; color: #94a3b8; margin-top: 20px; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .sb-link { display: flex; align-items: center; padding: 10px 14px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; transition: background 0.2s; font-size: 14px; color: #cbd5e1; }
-        .sb-link:hover { background-color: rgba(255,255,255,0.05); color: white; }
-        .sb-link.active { background-color: rgba(255,255,255,0.15); font-weight: 600; color: white; }
-        .sb-link span.emoji { margin-right: 12px; font-size: 16px; opacity: 0.8; }
-        .sb-link.active span.emoji { opacity: 1; }
+        
+        /* Buttons inside sidebar as links */
+        [data-testid="stSidebar"] button[kind="secondary"] {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #cbd5e1 !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            font-size: 14px !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            font-weight: 500 !important;
+            width: 100% !important;
+        }
+        [data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background-color: rgba(255,255,255,0.05) !important;
+            color: white !important;
+        }
+        /* Style Primary buttons in sidebar to look "active" */
+        [data-testid="stSidebar"] button[kind="primary"] {
+            background-color: rgba(255,255,255,0.15) !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: white !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            font-size: 14px !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            width: 100% !important;
+        }
+        /* Expander headers */
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary {
+            background-color: transparent !important;
+            color: #94a3b8 !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            padding: 10px 0px !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
+            color: white !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stExpander"] {
+            border: none !important;
+            background-color: transparent !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stVerticalBlock"] {
+            gap: 0.2rem;
+        }
     </style>
-    
-    <div class="sb-header">Monitor</div>
-    <div class="sb-link active"><span class="emoji">📰</span> Portfolio overview</div>
-    <div class="sb-link"><span class="emoji">⊞</span> Concentration and vintages</div>
-    
-    <div class="sb-header">Early warning</div>
-    <div class="sb-link"><span class="emoji">🔔</span> Early warning monitor</div>
-    <div class="sb-link"><span class="emoji">👤</span> Borrower 360</div>
-    <div class="sb-link"><span class="emoji">✓</span> Action centre</div>
-    
-    <div class="sb-header">Forward-looking</div>
-    <div class="sb-link"><span class="emoji">📈</span> Scenarios and IFRS 9 ECL</div>
-    <div class="sb-link"><span class="emoji">👥</span> Thin-file inclusion</div>
-    
-    <div class="sb-header">Governance</div>
-    <div class="sb-link"><span class="emoji">⚙️</span> Model performance</div>
-    <div class="sb-link"><span class="emoji">📚</span> Data and methodology</div>
-    <br>
     """, unsafe_allow_html=True)
     
-    st.markdown('<div class="sb-header" style="margin-top: 0;">PORTFOLIO FILTERS</div>', unsafe_allow_html=True)
+    if 'main_tab' not in st.session_state:
+        st.session_state.main_tab = 'Dashboard'
+    if 'dash_view' not in st.session_state:
+        st.session_state.dash_view = 'Portfolio Health'
+    if 'gov_section' not in st.session_state:
+        st.session_state.gov_section = 'Data'
+
+    with st.expander("📊 Dashboard", expanded=(st.session_state.main_tab == 'Dashboard')):
+        if st.button("📈 Portfolio Health", key="sb_dash_health", type="primary" if st.session_state.main_tab == 'Dashboard' and st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Dashboard'
+            st.session_state.dash_view = "Portfolio Health"
+            st.rerun()
+        if st.button("⚠️ Early Warning", key="sb_dash_ew", type="primary" if st.session_state.main_tab == 'Dashboard' and st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Dashboard'
+            st.session_state.dash_view = "Early Warning System"
+            st.rerun()
+        if st.button("💥 Stress Testing", key="sb_dash_st", type="primary" if st.session_state.main_tab == 'Dashboard' and st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Dashboard'
+            st.session_state.dash_view = "Stress Testing"
+            st.rerun()
+        if st.button("⚙️ Advanced (Model)", key="sb_dash_adv", type="primary" if st.session_state.main_tab == 'Dashboard' and st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Dashboard'
+            st.session_state.dash_view = "Advanced"
+            st.rerun()
+
+    with st.expander("📜 Data & Governance", expanded=(st.session_state.main_tab == 'Governance')):
+        if st.button("📊 Data", key="sb_gov_data", type="primary" if st.session_state.main_tab == 'Governance' and st.session_state.gov_section == "Data" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Governance'
+            st.session_state.gov_section = "Data"
+            st.rerun()
+        if st.button("🤖 Model", key="sb_gov_model", type="primary" if st.session_state.main_tab == 'Governance' and st.session_state.gov_section == "Model" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Governance'
+            st.session_state.gov_section = "Model"
+            st.rerun()
+        if st.button("📈 Performance", key="sb_gov_perf", type="primary" if st.session_state.main_tab == 'Governance' and st.session_state.gov_section == "Performance" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Governance'
+            st.session_state.gov_section = "Performance"
+            st.rerun()
+        if st.button("⚖️ Terms & Conditions", key="sb_gov_tc", type="primary" if st.session_state.main_tab == 'Governance' and st.session_state.gov_section == "Terms and Conditions" else "secondary", use_container_width=True):
+            st.session_state.main_tab = 'Governance'
+            st.session_state.gov_section = "Terms and Conditions"
+            st.rerun()
+            
+    st.markdown('<div class="sb-header" style="margin-top: 20px;">PORTFOLIO FILTERS</div>', unsafe_allow_html=True)
     st.markdown('<div style="font-size: 13px; color: #e2e8f0; margin-bottom: 6px;">Segment</div>', unsafe_allow_html=True)
     st.selectbox("Segment", ["All Segments", "Retail", "SME", "Corporate"], label_visibility="collapsed")
     
     st.markdown("<hr style='margin-top: 30px; margin-bottom: 15px; border-color: #2c4a68;'>", unsafe_allow_html=True)
-    st.markdown('<div class="sb-header" style="margin-top: 0;">User Profile</div>', unsafe_allow_html=True)
 
     user = st.session_state.get("current_user", {})
     email = user.get("email", "Authenticated User")
 
-    if st.button(f"👤 {email}", key="sidebar_profile_btn", use_container_width=True, help="Manage Profile"):
+    st.markdown(f"""
+    <div style="background-color: #1a3650; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #2c4a68;">
+        <div style="font-size: 14px; font-weight: bold; color: white;">👤 User Profile</div>
+        <div style="font-size: 12px; color: #94a3b8; word-wrap: break-word; margin-top: 4px;">{email}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("⚙️ Manage Profile", key="sidebar_profile_btn", use_container_width=True):
         manage_profile_dialog()
 
     st.markdown(
@@ -337,18 +416,13 @@ if not st.session_state.get('authenticated', False):
 
 
 # ==============================================================================
-# TOP-LEVEL TWO-TAB NAVIGATION
+# MAIN PAGE ROUTING (CONTROLLED BY SIDEBAR)
 # ==============================================================================
-tab_engine, tab_sources = st.tabs([
-    "📊 Dashboard", 
-    "📜 Data Governance"
-])
-
 
 # ##############################################################################
-# TAB 1: CREDIT RISK AUTOML ENGINE (OPERATIONAL WORKFLOW)
+# VIEW 1: CREDIT RISK AUTOML ENGINE (OPERATIONAL WORKFLOW)
 # ##############################################################################
-with tab_engine:
+if st.session_state.get('main_tab', 'Dashboard') == 'Dashboard':
 
     st.markdown('''
     <style>
@@ -627,50 +701,10 @@ with tab_engine:
             ''', unsafe_allow_html=True)
 
 # --- DASHBOARD INTERNAL NAVIGATION ---
-    if 'dash_sidebar_expanded' not in st.session_state:
-        st.session_state.dash_sidebar_expanded = True
     if 'dash_view' not in st.session_state:
         st.session_state.dash_view = 'Portfolio Health'
-
-    if st.session_state.dash_sidebar_expanded:
-        col_dash_nav, col_dash_main = st.columns([1.2, 4.8], gap='large')
-        with col_dash_nav:
-            st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
-            if st.button("⏪ Hide Menu", key="hide_dash_menu", use_container_width=True):
-                st.session_state.dash_sidebar_expanded = False
-                st.rerun()
-            st.markdown("### 📊 Dashboard")
-            if st.button("📈 Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Portfolio Health"
-                st.rerun()
-            if st.button("⚠️ Early Warning", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Early Warning System"
-                st.rerun()
-            if st.button("💥 Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Stress Testing"
-                st.rerun()
-            if st.button("⚙️ Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Advanced"
-                st.rerun()
-    else:
-        col_dash_nav, col_dash_main = st.columns([0.4, 5.6], gap='small')
-        with col_dash_nav:
-            st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
-            if st.button("⏩", key="show_dash_menu", help="Expand Menu", use_container_width=True):
-                st.session_state.dash_sidebar_expanded = True
-                st.rerun()
-            if st.button("📈", help="Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Portfolio Health"
-                st.rerun()
-            if st.button("⚠️", help="Early Warning System", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Early Warning System"
-                st.rerun()
-            if st.button("💥", help="Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Stress Testing"
-                st.rerun()
-            if st.button("⚙️", help="Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
-                st.session_state.dash_view = "Advanced"
-                st.rerun()
+    
+    col_dash_main = st.container()
 
 
     with col_dash_main:
@@ -1540,54 +1574,11 @@ with tab_engine:
 # ##############################################################################
 # TAB 2: DATA SOURCES & METHODOLOGY REGISTRY
 # ##############################################################################
-with tab_sources:
-    if 'gov_sidebar_expanded' not in st.session_state:
-        st.session_state.gov_sidebar_expanded = True
+elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
     if 'gov_section' not in st.session_state:
         st.session_state.gov_section = 'Data'
-
-    if st.session_state.gov_sidebar_expanded:
-        col_nav, col_content = st.columns([1.2, 4.8], gap="large")
-        with col_nav:
-            st.markdown('<div id="gov-nav-marker"></div>', unsafe_allow_html=True)
-            if st.button("⏪ Hide Menu", key="hide_gov_menu", use_container_width=True):
-                st.session_state.gov_sidebar_expanded = False
-                st.rerun()
-                
-            st.markdown("### 🏛️ Governance")
-            
-            if st.button("📊 Data", type="primary" if st.session_state.gov_section == "Data" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Data"
-                st.rerun()
-            if st.button("🤖 Model", type="primary" if st.session_state.gov_section == "Model" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Model"
-                st.rerun()
-            if st.button("📈 Performance", type="primary" if st.session_state.gov_section == "Performance" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Performance"
-                st.rerun()
-            if st.button("⚖️ Terms & Conditions", type="primary" if st.session_state.gov_section == "Terms and Conditions" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Terms and Conditions"
-                st.rerun()
-    else:
-        col_nav, col_content = st.columns([0.4, 5.6], gap="small")
-        with col_nav:
-            st.markdown('<div id="gov-nav-marker"></div>', unsafe_allow_html=True)
-            if st.button("⏩", key="show_gov_menu", help="Expand Menu", use_container_width=True):
-                st.session_state.gov_sidebar_expanded = True
-                st.rerun()
-                
-            if st.button("📊", help="Data", type="primary" if st.session_state.gov_section == "Data" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Data"
-                st.rerun()
-            if st.button("🤖", help="Model", type="primary" if st.session_state.gov_section == "Model" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Model"
-                st.rerun()
-            if st.button("📈", help="Performance", type="primary" if st.session_state.gov_section == "Performance" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Performance"
-                st.rerun()
-            if st.button("⚖️", help="Terms & Conditions", type="primary" if st.session_state.gov_section == "Terms and Conditions" else "secondary", use_container_width=True):
-                st.session_state.gov_section = "Terms and Conditions"
-                st.rerun()
+    
+    col_content = st.container()
 
     with col_content:
         if st.session_state.gov_section == "Data":
