@@ -250,6 +250,29 @@ if not st.session_state.get('authenticated', False):
 render_authenticated_user_bar()
 st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
+components.html('''
+<script>
+    const applyOrangeSidebar = () => {
+        ['dash-nav-marker', 'gov-nav-marker'].forEach(id => {
+            const marker = window.parent.document.getElementById(id);
+            if (marker) {
+                const colContent = marker.closest('div[data-testid="stVerticalBlock"]');
+                if (colContent) {
+                    colContent.style.backgroundColor = '#d8982a'; // Orange
+                    colContent.style.borderRadius = '12px';
+                    colContent.style.padding = '15px';
+                    colContent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                }
+            }
+        });
+    };
+    applyOrangeSidebar();
+    setTimeout(applyOrangeSidebar, 500);
+    setTimeout(applyOrangeSidebar, 2000);
+</script>
+''', height=0, width=0)
+
+
 
 # ==============================================================================
 # TOP-LEVEL TWO-TAB NAVIGATION
@@ -264,6 +287,18 @@ tab_engine, tab_sources = st.tabs([
 # TAB 1: CREDIT RISK AUTOML ENGINE (OPERATIONAL WORKFLOW)
 # ##############################################################################
 with tab_engine:
+
+st.markdown('''
+<style>
+/* Make sidebar buttons smaller */
+div[data-testid="stVerticalBlock"] > div > div > div[data-testid="stButton"] > button {
+    padding: 0.25rem 0.5rem !important;
+    min-height: 2.5rem !important;
+    font-size: 14px !important;
+}
+</style>
+''', unsafe_allow_html=True)
+
     
     # We define sample_csv here since we removed the expander that used to define it
     sample_csv = (
@@ -274,7 +309,7 @@ with tab_engine:
         "CUST-30119,Microfinance,LN-88104,2025-01-16,2025-02-16,2025-02-16,30,25000,0,KEN\n"
     )
 
-    if not st.session_state.training_completed:
+    with st.expander("📂 Data Ingestion", expanded=not st.session_state.data_ingested):
         # ==============================================================================
         # DATA INGESTION MOCKUP UI
         # ==============================================================================
@@ -468,16 +503,16 @@ with tab_engine:
                         update_iv_metadata(st.session_state.duck_conn, iv_df)
                         st.session_state.iv_df = iv_df
 
-                        update_progress(85, "Training models...")
-                        results = run_automl_pipeline(
-                            st.session_state.final_layered_df,
-                            optimize_metric="PR-AUC",
-                            tune_hyperparams=True,
-                            create_ensemble=True,
-                            progress_callback=lambda p, m: update_progress(int(85 + (p * 0.15)), m)
-                        )
+                        update_progress(85, "Skipping model training (disabled for now)...")
+                        # results = run_automl_pipeline(
+                        #     st.session_state.final_layered_df,
+                        #     optimize_metric="PR-AUC",
+                        #     tune_hyperparams=True,
+                        #     create_ensemble=True,
+                        #     progress_callback=lambda p, m: update_progress(int(85 + (p * 0.15)), m)
+                        # )
 
-                        st.session_state.automl_results = results
+                        st.session_state.automl_results = {}
                         st.session_state.data_ingested = True
                         st.session_state.layers_applied = True
                         st.session_state.training_completed = True
@@ -501,15 +536,55 @@ with tab_engine:
             </div>
             ''', unsafe_allow_html=True)
 
-    else:
-        # --- DASHBOARD INTERNAL NAVIGATION ---
-        col_dash_nav, col_dash_main = st.columns([1, 4], gap='large')
-        with col_dash_nav:
-            st.markdown('### Navigation')
-            dashboard_view = st.radio('View', ['Portfolio Health', 'Early Warning System', 'Stress Testing', 'Overall Segmentation'], label_visibility='collapsed')
+    # --- DASHBOARD INTERNAL NAVIGATION ---
+        if 'dash_sidebar_expanded' not in st.session_state:
+            st.session_state.dash_sidebar_expanded = True
+        if 'dash_view' not in st.session_state:
+            st.session_state.dash_view = 'Portfolio Health'
+
+        if st.session_state.dash_sidebar_expanded:
+            col_dash_nav, col_dash_main = st.columns([1.2, 4.8], gap='large')
+            with col_dash_nav:
+                st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
+                if st.button("⏪ Hide Menu", key="hide_dash_menu", use_container_width=True):
+                    st.session_state.dash_sidebar_expanded = False
+                    st.rerun()
+                st.markdown("### 📊 Dashboard")
+                if st.button("📈 Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Portfolio Health"
+                    st.rerun()
+                if st.button("⚠️ Early Warning", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Early Warning System"
+                    st.rerun()
+                if st.button("💥 Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Stress Testing"
+                    st.rerun()
+                if st.button("⚙️ Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Advanced"
+                    st.rerun()
+        else:
+            col_dash_nav, col_dash_main = st.columns([0.4, 5.6], gap='small')
+            with col_dash_nav:
+                st.markdown('<div id="dash-nav-marker"></div>', unsafe_allow_html=True)
+                if st.button("⏩", key="show_dash_menu", help="Expand Menu", use_container_width=True):
+                    st.session_state.dash_sidebar_expanded = True
+                    st.rerun()
+                if st.button("📈", help="Portfolio Health", type="primary" if st.session_state.dash_view == "Portfolio Health" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Portfolio Health"
+                    st.rerun()
+                if st.button("⚠️", help="Early Warning System", type="primary" if st.session_state.dash_view == "Early Warning System" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Early Warning System"
+                    st.rerun()
+                if st.button("💥", help="Stress Testing", type="primary" if st.session_state.dash_view == "Stress Testing" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Stress Testing"
+                    st.rerun()
+                if st.button("⚙️", help="Advanced (Model)", type="primary" if st.session_state.dash_view == "Advanced" else "secondary", use_container_width=True):
+                    st.session_state.dash_view = "Advanced"
+                    st.rerun()
+
 
         with col_dash_main:
-            if dashboard_view == 'Portfolio Health':
+            if st.session_state.dash_view == 'Portfolio Health':
                 # ==============================================================================
                 # LIVE DASHBOARD & ONSET DEFAULT SCREENING
                 # ==============================================================================
@@ -542,7 +617,7 @@ with tab_engine:
 
                 st.write("---")
 
-                results = st.session_state.automl_results
+                results = st.session_state.automl_results or {}
                 df = st.session_state.final_layered_df
                 probs = results.get("predicted_probs", np.zeros(len(df)))
                 explainer: Optional[CreditRiskExplainer] = results.get("explainer", None)
@@ -1356,15 +1431,19 @@ with tab_engine:
                             st.dataframe(tbl, width='stretch')
 
 
-            elif dashboard_view == 'Early Warning System':
+            elif st.session_state.dash_view == 'Early Warning System':
                 st.title('Early Warning System')
                 st.info('Module under development...')
-            elif dashboard_view == 'Stress Testing':
+            elif st.session_state.dash_view == 'Stress Testing':
                 st.title('Stress Testing')
                 st.info('Module under development...')
-            elif dashboard_view == 'Overall Segmentation':
+            elif st.session_state.dash_view == 'Overall Segmentation':
                 st.title('Overall Segmentation')
                 st.info('Module under development...')
+            elif st.session_state.dash_view == 'Advanced':
+                st.title('🤖 Advanced Model Governance')
+                st.info('To view full model governance tracking and validation documentation, please switch to the **Data Governance** tab and select **Model**.')
+
 # ##############################################################################
 # TAB 2: DATA SOURCES & METHODOLOGY REGISTRY
 # ##############################################################################
@@ -1377,6 +1456,7 @@ with tab_sources:
     if st.session_state.gov_sidebar_expanded:
         col_nav, col_content = st.columns([1.2, 4.8], gap="large")
         with col_nav:
+            st.markdown('<div id="gov-nav-marker"></div>', unsafe_allow_html=True)
             if st.button("⏪ Hide Menu", key="hide_gov_menu", use_container_width=True):
                 st.session_state.gov_sidebar_expanded = False
                 st.rerun()
@@ -1398,6 +1478,7 @@ with tab_sources:
     else:
         col_nav, col_content = st.columns([0.4, 5.6], gap="small")
         with col_nav:
+            st.markdown('<div id="gov-nav-marker"></div>', unsafe_allow_html=True)
             if st.button("⏩", key="show_gov_menu", help="Expand Menu", use_container_width=True):
                 st.session_state.gov_sidebar_expanded = True
                 st.rerun()
