@@ -1856,6 +1856,10 @@ elif st.session_state.get('main_tab', 'Dashboard') == 'Governance':
                 <div class="tc-card-title">4. Privacy (Kenya DPA 2019)</div>
                 <div class="tc-card-text">Credentials are hashed and stored in an isolated data store. Portfolio records are ephemeral and held in volatile RAM.</div>
             </div>
+            <div class="tc-card">
+                <div class="tc-card-title">5. Open Source Licensing</div>
+                <div class="tc-card-text">This project is proudly open source and released under the Apache License 2.0. <a href="https://github.com/Bluuclues/CreditRisk_AutoML/blob/main/LICENSE" target="_blank" style="color: #ea580c; font-weight: bold; text-decoration: none;">View the Full License ↗</a></div>
+            </div>
             """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
