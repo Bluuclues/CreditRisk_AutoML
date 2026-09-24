@@ -83,7 +83,7 @@ with st.sidebar:
             color: #cbd5e1 !important;
             text-align: left !important;
             justify-content: flex-start !important;
-            font-size: 14px !important;
+            font-size: 13px !important;
             padding: 4px 10px !important;
             min-height: 36px !important;
             border-radius: 6px !important;
@@ -102,7 +102,7 @@ with st.sidebar:
             color: white !important;
             text-align: left !important;
             justify-content: flex-start !important;
-            font-size: 14px !important;
+            font-size: 13px !important;
             padding: 4px 10px !important;
             min-height: 36px !important;
             border-radius: 6px !important;
@@ -118,6 +118,11 @@ with st.sidebar:
             margin: 0 !important;
             justify-content: flex-start !important;
             display: flex !important;
+            font-size: 13px !important;
+        }
+        /* Make buttons span full width */
+        [data-testid="stSidebar"] div[data-testid="stButton"] {
+            width: 100% !important;
         }
         /* Expander headers */
         [data-testid="stSidebar"] [data-testid="stExpander"] summary {
